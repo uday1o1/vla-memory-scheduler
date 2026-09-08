@@ -1,0 +1,7 @@
+# Papers (Sem3/reference/) and cloned repos (Sem3/cloned-repos/) we build on top
+# of live one level up, shared between IAS and DL — not part of this project's
+# own codebase, not committed here, nothing to ignore locally in this repo.
+
+__pycache__/
+*.pyc
+.DS_Store
