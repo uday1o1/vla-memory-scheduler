@@ -32,7 +32,7 @@ Read in full text directly after an earlier abstract-level pass mischaracterized
 
 ### 6. Kutukcu, Baidya, Raghunathan, Dey. "Contention Grading and Adaptive Model Selection for Machine Vision in Embedded Systems." ACM Transactions on Embedded Computing Systems, 2022. DOI: [10.1145/3520134](https://doi.org/10.1145/3520134)
 
-Read at abstract level. Source of the Artificial Contention Unit technique, dummy GPU workloads that generate a controllable, steady contention level. This method is reused for the synthetic contention injection experiments described in `proposal.md`.
+Read at abstract level. This paper's contention-generation approach, profiling the system under a dummy GPU workload to produce a controllable, steady contention level, is the general technique this project's synthetic contention injection is modeled on. The paper's own exact terminology for this mechanism was not independently confirmed against its full text, which is paywalled; this project's implementation is described in `proposal.md` as a synthetic contention generator, not attributed to a specific named term from the source.
 
 ### 7. Grover et al. "Embodied Foundation Models at the Edge: A Survey of Deployment Constraints and Mitigation Strategies." [arXiv:2603.16952](https://arxiv.org/abs/2603.16952)
 
