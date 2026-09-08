@@ -41,4 +41,4 @@ Null-result framing, fixed in advance: if the adaptive policy shows no statistic
 
 ## 3. Device Available and Maintainer
 
-Device available: NVIDIA RTX 5050 (Uday Arora) for local development, plus a rented A100-class GPU for the full evaluation sweep (cost and access details in `novelty-feasibility-audit.md`). Maintainer: Uday Arora; Claude Code access is requested to support implementation throughout the semester.
+Device available: NVIDIA RTX 5050 (desktop) (Uday Arora) for local development, plus a rented A100-class GPU for the full evaluation sweep (cost and access details in `novelty-feasibility-audit.md`). Maintainer: Uday Arora; Claude Code access is requested to support implementation throughout the semester.
