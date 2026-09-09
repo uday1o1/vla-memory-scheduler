@@ -2,7 +2,7 @@
 
 **Course:** CMPE 249, Intelligent Autonomous Systems, Fall 2026, Prof. Kaikai Liu
 **Team:** Uday Arora
-**Track:** Deployment Track. The track's own definition, optimizing a model for latency, memory, quantization, batching, or edge compute, is a direct match for this project's content.
+**Track:** Deployment Track
 
 ## Abstract
 
