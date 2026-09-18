@@ -18,7 +18,7 @@ Primary metric: deadline-miss rate, the fraction of inference calls exceeding a 
 
 Secondary metric: the shape of the latency degradation curve as contention increases, testing whether the adaptive policy produces smaller latency variance than the static policy, which has no mechanism to react to contention at all.
 
-Statistical test: a paired Wilcoxon signed-rank test, with effect size reported as matched-pairs rank-biserial correlation, at least eight repetitions per scenario, alpha of 0.05.
+Statistical test: a paired Wilcoxon signed-rank test, with effect size reported as matched-pairs rank-biserial correlation, six repetitions per scenario, alpha of 0.05.
 
 Power caveat, stated in advance: a single model family and a small sample size mean only large effects are reliably detectable; this is disclosed before data collection, not after a null result.
 
@@ -33,7 +33,7 @@ Null-result framing, fixed in advance: if the adaptive policy shows no statistic
 1. Baseline: the unmodified upstream static residency policy, run exactly as released.
 2. Adaptive policy: replaces the one-time offline profiling decision with a policy that re-evaluates residency at runtime using the remaining deadline budget and a live GPU-occupancy signal. Under low contention and ample budget, it behaves like the static baseline, which is already close to optimal in that regime. Under high contention or a tight budget, it prioritizes layers that most reduce worst-case latency variance, even where that is not the global throughput optimum.
 3. Contention injection: a synthetic dummy-workload contention generator and a bursty-arrival generator, run as an independent process sharing the GPU through CUDA MPS.
-4. Evaluation: both policies run under both contention scenarios, at least eight repetitions each, on the same hardware, model, and inputs, differing only in the residency policy.
+4. Evaluation: both policies run under both contention scenarios, six repetitions each, on the same hardware, model, and inputs, differing only in the residency policy.
 
 **Data sources.** The model, `nvidia/Alpamayo-R1-10B`, is open and ungated, licensed under OpenMDW-1.1, an open academic license permitting free non-commercial use. The codebase is MIT licensed. Neither requires special access. Representative driving-scene input frames come from either NVIDIA's `PhysicalAI-Autonomous-Vehicles` dataset, which is gated by an automatic license agreement rather than manual review, or `Jonas-a11y/alpamayo-carla-bridge`, a CARLA-simulator integration for Alpamayo maintained independently of the `oom-free-alpamayo` authors, which avoids the licensed dataset entirely. Only a small sample of driving frames is needed; the full dataset is not required.
 
@@ -41,4 +41,4 @@ Null-result framing, fixed in advance: if the adaptive policy shows no statistic
 
 ## 3. Device Available and Maintainer
 
-Device available: NVIDIA RTX 5050 (desktop) for code development; model loading, inference, and contention experiments run on a rented A100-class GPU, since Alpamayo-R1-10B's 22GB footprint exceeds the local card's memory. Maintainer: Uday Arora; Claude Code access is requested to support implementation throughout the semester.
+Device available: NVIDIA RTX 5050 (desktop) for code development; model loading, inference, and contention experiments run on a rented RTX 3090 (24GB VRAM), since Alpamayo-R1-10B's 22GB footprint exceeds the local card's memory. Maintainer: Uday Arora; Claude Code access is requested to support implementation throughout the semester.
