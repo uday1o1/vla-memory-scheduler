@@ -24,7 +24,7 @@ Based only on verified resource facts, not duration estimates.
 
 **Compute access, named limitation.** The local development machine (an RTX 5050 desktop, 8GB) cannot hold the 22GB model, so every experiment runs on a rented GPU. The contention-aware half of this project additionally requires running two processes on one GPU simultaneously, which requires CUDA MPS administrative access; MPS support inside a container is provider-dependent and is confirmed directly on the rented hardware before relying on it.
 
-**Compute cost.** This project involves no model training, only a bounded evaluation sweep of baseline against adaptive policy across two contention scenarios and at least eight repetitions each. Estimated at $40 to $150 on a rented A100-class GPU.
+**Compute cost.** This project involves no model training, only a bounded evaluation sweep of baseline against adaptive policy across two contention scenarios and six repetitions each. Estimated at under $2 on a rented RTX 3090 (24GB VRAM), on-demand billing.
 
 **Data access.** The model and code require no special access. Representative driving-scene inputs are available either through NVIDIA's automatically-gated driving dataset, needed only as a small sample, or through `Jonas-a11y/alpamayo-carla-bridge`, an independently maintained CARLA simulator integration, which avoids the licensed dataset question entirely.
 
