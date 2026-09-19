@@ -101,7 +101,7 @@ def _selftest():
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from ias.paths import bootstrap
+    from scheduler.paths import bootstrap
     bootstrap()
     try:
         from alpamayo_memopt.profiler import interleaved_placement

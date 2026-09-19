@@ -29,10 +29,10 @@ import torch
 from pathlib import Path as _Path  # noqa: E402
 sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 
-from ias.paths import RESULTS, bootstrap  # noqa: E402
+from scheduler.paths import RESULTS, bootstrap  # noqa: E402
 
 bootstrap()
-from ias.profiles import PROFILES, deadline_s, select_profile
+from scheduler.profiles import PROFILES, deadline_s, select_profile
 
 WORKER = str(Path(__file__).resolve().parent / "worker.py")
 PY = "/venv/main/bin/python"
@@ -63,7 +63,7 @@ def calibrate(safety_gb: float):
     committing to these levels, since the allocator's reservation behavior
     does not always match naive math.
     """
-    from ias.profiles import free_gb
+    from scheduler.profiles import free_gb
     print("=== Calibration: what does each pressure level admit? ===")
     print(f"{'pressure GB':<14}{'free GB':<12}{'admits'}")
     admits = {}

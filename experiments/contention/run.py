@@ -23,16 +23,16 @@ import torch
 from pathlib import Path as _Path  # noqa: E402
 sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 
-from ias.paths import R1_CONFIG, RESULTS, bootstrap  # noqa: E402
+from scheduler.paths import R1_CONFIG, RESULTS, bootstrap  # noqa: E402
 
 bootstrap()
 from alpamayo_memopt import load_config  # noqa: E402
 from alpamayo_memopt.models import TriHookPipeline, get_adapter  # noqa: E402
 from alpamayo_memopt.profiler import interleaved_placement  # noqa: E402
 
-from ias.inputs import prepare_inputs_for_clip  # noqa: E402
-from ias.policy import CALIBRATION, PolicyState, decide_residency  # noqa: E402
-from ias.contention import steady_load, bursty_load  # noqa: E402
+from scheduler.inputs import prepare_inputs_for_clip  # noqa: E402
+from scheduler.policy import CALIBRATION, PolicyState, decide_residency  # noqa: E402
+from scheduler.contention import steady_load, bursty_load  # noqa: E402
 
 CLIPS = [
     "d497f01b-4f68-4c27-9a6c-55872a1d6bd6",

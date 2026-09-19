@@ -23,13 +23,13 @@ from pathlib import Path
 from pathlib import Path as _Path  # noqa: E402
 sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 
-from ias.paths import REPO_ROOT, RESULTS, bootstrap  # noqa: E402
+from scheduler.paths import REPO_ROOT, RESULTS, bootstrap  # noqa: E402
 
 bootstrap()
-from ias.profiles import deadline_s
+from scheduler.profiles import deadline_s
 
 WORKER = str(REPO_ROOT / "experiments" / "switching" / "worker.py")
-CONTENTION = str(REPO_ROOT / "ias" / "contention.py")
+CONTENTION = str(REPO_ROOT / "scheduler" / "contention.py")
 PY = "/venv/main/bin/python"
 CLIPS = [
     "d497f01b-4f68-4c27-9a6c-55872a1d6bd6",

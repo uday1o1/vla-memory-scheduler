@@ -81,7 +81,7 @@ cd /root/oom-free-alpamayo
 python scripts/profile.py --model r1 --no-lock-clock --output r1_config.json
 
 echo
-echo "Ready. The residency profiles in ias/profiles.py were measured on an"
+echo "Ready. The residency profiles in scheduler/profiles.py were measured on an"
 echo "RTX 3090 and must be re-measured on different hardware before use:"
 echo "    python experiments/characterize/calibrate.py    # latency per residency level"
 echo "    python experiments/characterize/vram_per_k.py   # footprint per residency level"

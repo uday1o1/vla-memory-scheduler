@@ -24,11 +24,11 @@ import torch
 from pathlib import Path as _Path  # noqa: E402
 sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 
-from ias.paths import R1_CONFIG, bootstrap  # noqa: E402
+from scheduler.paths import R1_CONFIG, bootstrap  # noqa: E402
 
 bootstrap()
 
-from ias.memory import gb, hog_vram  # noqa: E402
+from scheduler.memory import gb, hog_vram  # noqa: E402
 
 
 def probe_a():

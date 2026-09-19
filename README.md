@@ -19,7 +19,7 @@ That overhead turned out to be the project's principal result. The upstream plac
 ## Repository Layout
 
 ```
-ias/                        importable library, shared by every experiment
+scheduler/                  importable library, shared by every experiment
   paths.py                  resolves the repo, the upstream clone, and the results directory
   placement.py              nested residency placement via recursive bisection
   profiles.py               pre-profiled residency configurations and the switching rule
@@ -46,7 +46,7 @@ Every experiment is a standalone script run from the repository root, for exampl
 `python experiments/placement/theory.py`. Scripts locate the upstream clone and
 each other by resolving paths from their own location, so the checkout can live
 anywhere; set `ALPAMAYO_HOME` if the `oom-free-alpamayo` clone is not a sibling
-directory, and `IAS_RESULTS` to write run output somewhere other than `data/`.
+directory, and `VLA_RESULTS` to write run output somewhere other than `data/`.
 
 ## Foundation
 

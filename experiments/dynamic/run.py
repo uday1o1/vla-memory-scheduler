@@ -28,10 +28,10 @@ import torch
 from pathlib import Path as _Path  # noqa: E402
 sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 
-from ias.paths import RESULTS, bootstrap  # noqa: E402
+from scheduler.paths import RESULTS, bootstrap  # noqa: E402
 
 bootstrap()
-from ias.profiles import deadline_s
+from scheduler.profiles import deadline_s
 
 WORKER = str(Path(__file__).resolve().parent / "worker.py")
 PY = "/venv/main/bin/python"

@@ -32,10 +32,10 @@ from itertools import combinations
 from pathlib import Path as _Path  # noqa: E402
 sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 
-from ias.paths import bootstrap  # noqa: E402
+from scheduler.paths import bootstrap  # noqa: E402
 
 bootstrap()
-from ias.placement import nested_placement, max_gap, priority_order  # noqa: E402
+from scheduler.placement import nested_placement, max_gap, priority_order  # noqa: E402
 
 TOTAL = 36
 
