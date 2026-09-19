@@ -20,11 +20,18 @@
 
 set -euo pipefail
 
+# Fall back to the token huggingface_hub already stores, so a machine that has
+# been authenticated once does not need the variable exported again.
+if [ -z "${HF_TOKEN:-}" ] && [ -s "${HF_HOME:-$HOME/.cache/huggingface}/token" ]; then
+    HF_TOKEN="$(cat "${HF_HOME:-$HOME/.cache/huggingface}/token")"
+fi
+
 if [ -z "${HF_TOKEN:-}" ]; then
-    echo "HF_TOKEN is not set."
+    echo "No Hugging Face token found."
     echo "The PhysicalAI-Autonomous-Vehicles dataset is gated. Create a token at"
     echo "huggingface.co/settings/tokens with 'read public gated repos' enabled,"
-    echo "then re-run:  HF_TOKEN=hf_... bash setup_instance.sh"
+    echo "then either run:  HF_TOKEN=hf_... bash setup_instance.sh"
+    echo "or place it at:   \${HF_HOME:-\$HOME/.cache/huggingface}/token"
     exit 1
 fi
 
