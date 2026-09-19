@@ -65,38 +65,43 @@ def decide_residency(
     deadline_s: float,
     gpu_util: float,
     calibration: Calibration = CALIBRATION,
-    contention_slowdown_factor: float = 1.032,
+    observed_recent_latency: float | None = None,
     contention_threshold: float = 0.5,
     hysteresis_layers: int = 3,
 ) -> int:
     """Return the new resident-layer count K for this call.
 
-    Direction under contention: a bounded experiment (ias_contention_interaction.py)
-    found compute contention slows ALL K values uniformly (~3% at the tested
-    intensity) - no K value is differentially protected. So contention does
-    NOT push the policy to shed or add layers for performance reasons; it
-    inflates the LATENCY ESTIMATE used against the deadline. If that inflated
-    estimate no longer fits at the current K, min_k_for_deadline naturally
-    asks for a higher K (more residency, since higher K is always faster).
+    `observed_recent_latency`: the REAL recent average latency (e.g. a
+    rolling window mean over the last few calls), when available. This is
+    used DIRECTLY for the deadline-miss check - not a theoretical estimate
+    from the clean calibration table, which cannot see real contention
+    effects. It also derives an empirical contention factor
+    (observed / calibration.latency_at(current_k)) used to project what
+    OTHER K values would achieve under the same slowdown, assuming it
+    applies uniformly across K (confirmed by ias_contention_interaction.py).
+    Falls back to the clean calibration when not yet available (e.g. the
+    first few calls before a rolling window fills).
 
-    `contention_slowdown_factor` is a placeholder from an uncalibrated test
-    load; must be replaced with the real factor measured at our locked 70%
-    GPU_UTIL target once ias_contention_generator.py is calibrated.
+    An earlier version used a fixed placeholder multiplier instead of real
+    observed data, which caused the deadline-miss check to badly
+    underestimate real contention (see PROJECT_DETAILS.md) and left the
+    policy never reacting to a sustained ~32% real slowdown. Grounding both
+    the miss-check and the projection in actual observed latency fixes this.
 
     Hysteresis: only actually change K if the ideal target differs from the
     current K by more than `hysteresis_layers`, OR if staying at current_k
     would clearly miss the deadline (that always overrides hysteresis - a
     real miss risk is worth paying the transition cost for).
     """
-    effective_deadline = deadline_s
-    if gpu_util > contention_threshold:
-        effective_deadline = deadline_s / contention_slowdown_factor
+    if gpu_util > contention_threshold and observed_recent_latency is not None:
+        empirical_factor = observed_recent_latency / calibration.latency_at(state.current_k)
+        effective_deadline = deadline_s / empirical_factor
+        current_latency = observed_recent_latency
+    else:
+        effective_deadline = deadline_s
+        current_latency = calibration.latency_at(state.current_k)
 
     ideal_k = calibration.min_k_for_deadline(effective_deadline, state.max_k)
-
-    current_latency = calibration.latency_at(state.current_k)
-    if gpu_util > contention_threshold:
-        current_latency *= contention_slowdown_factor
     would_miss_deadline = current_latency > deadline_s
 
     delta = abs(ideal_k - state.current_k)
@@ -118,9 +123,18 @@ def demo():
     assert k == 33, f"expected no change at K=33 under low contention, got {k}"
     print(f"Low contention, ample budget -> K={k} (unchanged, as expected)")
 
-    k = decide_residency(state, deadline_s=deadline, gpu_util=0.8)
-    print(f"High contention (uncalibrated placeholder factor) -> K={k}")
-    assert k <= 33
+    # Real observed contention from Rep 1 data: ~32% slowdown (6.943s -> 9.157s
+    # under steady contention). Even K=33's clean latency (7.022s) can't beat
+    # the resulting effective deadline (~6.12s), so min_k_for_deadline falls
+    # back to max_k, and the deadline-miss override correctly fires - the
+    # policy detects the real miss even though residency can't fix it (a
+    # genuine finding: uniform-across-K contention has no residency-based
+    # escape, confirmed by ias_contention_interaction.py).
+    real_observed_latency = 9.157
+    k = decide_residency(state, deadline_s=deadline, gpu_util=0.8,
+                          observed_recent_latency=real_observed_latency)
+    assert k == 33, f"expected fallback to max_k when no K can meet effective deadline, got {k}"
+    print(f"Real contention factor (1.319x, from Rep 1 data) -> K={k} (miss correctly detected, no K can escape it)")
 
     tight_deadline = cal.latency_at(16)
     state2 = PolicyState(current_k=33, max_k=33)

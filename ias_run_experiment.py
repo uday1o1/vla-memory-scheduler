@@ -81,7 +81,9 @@ def run_calls(loaded, adapter, a, inputs, device, method: str, deadline: float,
         transition_s = 0.0
         if method == "adaptive":
             gpu_util = sensed_gpu_util(recent, state.current_k)
-            new_k = decide_residency(state, deadline_s=deadline, gpu_util=gpu_util)
+            recent_avg = sum(recent) / len(recent) if len(recent) >= ROLLING_WINDOW else None
+            new_k = decide_residency(state, deadline_s=deadline, gpu_util=gpu_util,
+                                      observed_recent_latency=recent_avg)
             if new_k != state.current_k:
                 new_resident = set(interleaved_placement(new_k, N_VLM))
                 t0 = time.perf_counter()
