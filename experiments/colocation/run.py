@@ -17,7 +17,7 @@ import subprocess
 import time
 from pathlib import Path
 
-WORKER = "/root/ias_colocation_worker.py"
+WORKER = str(Path(__file__).resolve().parent / "worker.py")
 PY = "/venv/main/bin/python"
 CLIPS = [
     "d497f01b-4f68-4c27-9a6c-55872a1d6bd6",
@@ -62,8 +62,8 @@ def run_config(name: str, ks: list[int], n_calls: int, outdir: Path) -> dict:
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--n-calls", type=int, default=20)
-    p.add_argument("--outdir", type=Path, default=Path("/root/coloc"))
-    p.add_argument("--output", type=Path, default=Path("/root/colocation_results.json"))
+    p.add_argument("--outdir", type=Path, default=RESULTS / "coloc")
+    p.add_argument("--output", type=Path, default=RESULTS / "colocation_results.json")
     args = p.parse_args()
     args.outdir.mkdir(parents=True, exist_ok=True)
 

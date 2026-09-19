@@ -25,13 +25,17 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 import torch
 
-sys.path.insert(0, "/root/oom-free-alpamayo")
-sys.path.insert(0, "/root")
+from pathlib import Path as _Path  # noqa: E402
+sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+
+from ias.paths import R1_CONFIG, RESULTS, bootstrap  # noqa: E402
+
+bootstrap()
 from alpamayo_memopt import load_config
 from alpamayo_memopt.models import TriHookPipeline, get_adapter
 from alpamayo_memopt.profiler import interleaved_placement
-from ias_calibrate import prepare_inputs_for_clip
-from ias_placement import nested_placement
+from ias.inputs import prepare_inputs_for_clip
+from ias.placement import nested_placement
 
 CLIPS = [
     "d497f01b-4f68-4c27-9a6c-55872a1d6bd6",
@@ -74,7 +78,7 @@ def main():
     p.add_argument("--latency-reps", type=int, default=3)
     p.add_argument("--max-k", type=int, default=33,
                    help="largest residency this card can hold; paths scale to it")
-    p.add_argument("--output", type=Path, default=Path("/root/placement_bench.json"))
+    p.add_argument("--output", type=Path, default=RESULTS / "placement_bench.json")
     args = p.parse_args()
 
     from transformers.utils import logging as _hf
@@ -86,7 +90,7 @@ def main():
     device = "cuda:0"
     torch.cuda.set_device(0)
 
-    config = load_config("/root/oom-free-alpamayo/r1_config.json")
+    config = load_config(R1_CONFIG)
     adapter = get_adapter(config.model.kind)
 
     class A: pass

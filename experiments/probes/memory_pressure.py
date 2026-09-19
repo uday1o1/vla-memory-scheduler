@@ -21,24 +21,14 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 import torch
 
+from pathlib import Path as _Path  # noqa: E402
+sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 
-def gb(x):
-    return x / (1024 ** 3)
+from ias.paths import R1_CONFIG, bootstrap  # noqa: E402
 
+bootstrap()
 
-def hog_vram(hold_gb: float, duration_s: float, ready_evt, device_idx: int = 0):
-    """Allocate and hold `hold_gb` of VRAM in a separate process."""
-    torch.cuda.set_device(device_idx)
-    n_elems = int(hold_gb * (1024 ** 3) / 4)
-    try:
-        block = torch.empty(n_elems, dtype=torch.float32, device=f"cuda:{device_idx}")
-        block.fill_(1.0)
-        torch.cuda.synchronize()
-        ready_evt.set()
-        time.sleep(duration_s)
-    except Exception as e:
-        print(f"    [hog] FAILED to allocate {hold_gb}GB: {type(e).__name__}: {str(e)[:120]}")
-        ready_evt.set()
+from ias.memory import gb, hog_vram  # noqa: E402
 
 
 def probe_a():
@@ -67,8 +57,6 @@ def probe_a():
 def probe_c():
     """Can the model load at K=33 when VRAM is already held by another process?"""
     print("\n=== C. Can K=33 load under pre-existing memory pressure? ===")
-    sys.path.insert(0, "/root/oom-free-alpamayo")
-    sys.path.insert(0, "/root")
     from alpamayo_memopt import load_config
     from alpamayo_memopt.models import TriHookPipeline, get_adapter
     from alpamayo_memopt.profiler import interleaved_placement
@@ -76,7 +64,7 @@ def probe_c():
     from transformers.utils import logging as _hf
     _hf.set_verbosity_error(); _hf.disable_progress_bar()
 
-    config = load_config("/root/oom-free-alpamayo/r1_config.json")
+    config = load_config(R1_CONFIG)
     adapter = get_adapter(config.model.kind)
 
     class A: pass

@@ -26,10 +26,15 @@ from pathlib import Path
 
 import torch
 
-sys.path.insert(0, "/root")
-from ias_profiles import PROFILES, deadline_s, select_profile
+from pathlib import Path as _Path  # noqa: E402
+sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 
-WORKER = "/root/ias_switch_worker.py"
+from ias.paths import RESULTS, bootstrap  # noqa: E402
+
+bootstrap()
+from ias.profiles import PROFILES, deadline_s, select_profile
+
+WORKER = str(Path(__file__).resolve().parent / "worker.py")
 PY = "/venv/main/bin/python"
 CLIPS = [
     "d497f01b-4f68-4c27-9a6c-55872a1d6bd6",
@@ -58,7 +63,7 @@ def calibrate(safety_gb: float):
     committing to these levels, since the allocator's reservation behavior
     does not always match naive math.
     """
-    from ias_profiles import free_gb
+    from ias.profiles import free_gb
     print("=== Calibration: what does each pressure level admit? ===")
     print(f"{'pressure GB':<14}{'free GB':<12}{'admits'}")
     admits = {}
@@ -86,8 +91,8 @@ def main():
     p.add_argument("--reps", type=int, default=8)
     p.add_argument("--n-calls", type=int, default=20)
     p.add_argument("--placement", choices=["nested", "upstream"], default="nested")
-    p.add_argument("--outdir", type=Path, default=Path("/root/switch"))
-    p.add_argument("--output", type=Path, default=Path("/root/switch_results.json"))
+    p.add_argument("--outdir", type=Path, default=RESULTS / "switch")
+    p.add_argument("--output", type=Path, default=RESULTS / "switch_results.json")
     p.add_argument("--safety-gb", type=float, default=1.0)
     p.add_argument("--calibrate-only", action="store_true")
     args = p.parse_args()

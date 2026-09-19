@@ -20,11 +20,16 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, "/root")
-from ias_profiles import deadline_s
+from pathlib import Path as _Path  # noqa: E402
+sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 
-WORKER = "/root/ias_switch_worker.py"
-CONTENTION = "/root/ias_contention_generator.py"
+from ias.paths import REPO_ROOT, RESULTS, bootstrap  # noqa: E402
+
+bootstrap()
+from ias.profiles import deadline_s
+
+WORKER = str(REPO_ROOT / "experiments" / "switching" / "worker.py")
+CONTENTION = str(REPO_ROOT / "ias" / "contention.py")
 PY = "/venv/main/bin/python"
 CLIPS = [
     "d497f01b-4f68-4c27-9a6c-55872a1d6bd6",
@@ -41,8 +46,8 @@ def main():
     p.add_argument("--reps", type=int, default=8)
     p.add_argument("--n-calls", type=int, default=20)
     p.add_argument("--duty-cycle", type=float, default=0.70)
-    p.add_argument("--outdir", type=Path, default=Path("/root/cbound"))
-    p.add_argument("--output", type=Path, default=Path("/root/compute_boundary_results.json"))
+    p.add_argument("--outdir", type=Path, default=RESULTS / "cbound")
+    p.add_argument("--output", type=Path, default=RESULTS / "compute_boundary_results.json")
     args = p.parse_args()
     args.outdir.mkdir(parents=True, exist_ok=True)
 

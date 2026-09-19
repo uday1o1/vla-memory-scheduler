@@ -29,11 +29,16 @@ from __future__ import annotations
 import sys
 from itertools import combinations
 
-sys.path.insert(0, "/root")
+from pathlib import Path as _Path  # noqa: E402
+sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+
+from ias.paths import bootstrap  # noqa: E402
+
+bootstrap()
 try:
-    from ias_placement import nested_placement, max_gap, priority_order
+    from ias.placement import nested_placement, max_gap, priority_order
 except ImportError:
-    from ias_placement import nested_placement, max_gap, priority_order
+    from ias.placement import nested_placement, max_gap, priority_order
 
 TOTAL = 36
 
@@ -72,7 +77,6 @@ def main():
     verify_lower_bound(nested_placement, "nested")
     verify_lower_bound(sequential_placement, "sequential")
     try:
-        sys.path.insert(0, "/root/oom-free-alpamayo")
         from alpamayo_memopt.profiler import interleaved_placement
         verify_lower_bound(interleaved_placement, "upstream")
         have_upstream = True

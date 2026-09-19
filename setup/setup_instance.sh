@@ -81,12 +81,12 @@ cd /root/oom-free-alpamayo
 python scripts/profile.py --model r1 --no-lock-clock --output r1_config.json
 
 echo
-echo "Ready. The residency profiles in ias_profiles.py were measured on an"
+echo "Ready. The residency profiles in ias/profiles.py were measured on an"
 echo "RTX 3090 and must be re-measured on different hardware before use:"
-echo "    python ias_calibrate.py      # latency per residency level"
-echo "    python ias_vram_per_k.py     # memory footprint per residency level"
+echo "    python experiments/characterize/calibrate.py    # latency per residency level"
+echo "    python experiments/characterize/vram_per_k.py   # footprint per residency level"
 echo
 echo "The placement results are hardware independent in move count and should"
 echo "reproduce exactly; only the seconds per move should differ:"
-echo "    python ias_placement_theory.py   # move-optimality, no GPU needed"
-echo "    python ias_placement_bench.py    # transition cost and latency parity"
+echo "    python experiments/placement/theory.py      # move-optimality, no GPU needed"
+echo "    python experiments/placement/benchmark.py   # transition cost and latency parity"

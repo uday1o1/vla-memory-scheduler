@@ -18,13 +18,17 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 import torch
 
-sys.path.insert(0, "/root/oom-free-alpamayo")
-sys.path.insert(0, "/root")
+from pathlib import Path as _Path  # noqa: E402
+sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+
+from ias.paths import R1_CONFIG, RESULTS, bootstrap  # noqa: E402
+
+bootstrap()
 from alpamayo_memopt import load_config
 from alpamayo_memopt.models import TriHookPipeline, get_adapter
 from alpamayo_memopt.profiler import interleaved_placement
-from ias_calibrate import prepare_inputs_for_clip
-from ias_placement import nested_placement
+from ias.inputs import prepare_inputs_for_clip
+from ias.placement import nested_placement
 
 K_VALUES = [16, 24, 30, 33]
 PATH = [33, 24, 30, 16, 33]  # representative adaptation path
@@ -36,7 +40,7 @@ def main():
     device = "cuda:0"
     torch.cuda.set_device(0)
 
-    config = load_config("/root/oom-free-alpamayo/r1_config.json")
+    config = load_config(R1_CONFIG)
     adapter = get_adapter(config.model.kind)
 
     class A: pass
@@ -117,7 +121,7 @@ def main():
           f"({u['seconds'] / n['seconds']:.2f}x less transition time) "
           f"with {u['moves'] / n['moves']:.2f}x fewer moves")
 
-    Path("/root/placement_eval.json").write_text(json.dumps(results, indent=2))
+    RESULTS / "placement_eval.json".write_text(json.dumps(results, indent=2))
     print("\nSaved -> /root/placement_eval.json")
 
 

@@ -20,13 +20,17 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 import torch
 
-sys.path.insert(0, "/root/oom-free-alpamayo")
-sys.path.insert(0, "/root")
+from pathlib import Path as _Path  # noqa: E402
+sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+
+from ias.paths import R1_CONFIG, RESULTS, bootstrap  # noqa: E402
+
+bootstrap()
 from alpamayo_memopt import load_config
 from alpamayo_memopt.models import TriHookPipeline, get_adapter
 from alpamayo_memopt.profiler import interleaved_placement
-from ias_calibrate import prepare_inputs_for_clip
-from ias_placement import nested_placement
+from ias.inputs import prepare_inputs_for_clip
+from ias.placement import nested_placement
 
 CLIPS = [
     "d497f01b-4f68-4c27-9a6c-55872a1d6bd6",
@@ -61,7 +65,7 @@ def main():
     device = "cuda:0"
     torch.cuda.set_device(0)
 
-    config = load_config("/root/oom-free-alpamayo/r1_config.json")
+    config = load_config(R1_CONFIG)
     adapter = get_adapter(config.model.kind)
 
     class A: pass
@@ -124,7 +128,7 @@ def main():
             }
             print(f"{k:<6}{clip[:8]:<10}{str(identical):<12}{max_diff:<16.3e}{list(out_u.shape)}")
 
-    Path("/root/placement_correctness.json").write_text(json.dumps(results, indent=2))
+    RESULTS / "placement_correctness.json".write_text(json.dumps(results, indent=2))
     print(f"\nAll outputs bit-identical across placements: {all_identical}")
     if not all_identical:
         print("Any nonzero difference would need explaining before the latency")

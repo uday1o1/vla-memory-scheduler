@@ -15,14 +15,18 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 import torch  # noqa: E402
 
-sys.path.insert(0, "/root/oom-free-alpamayo")
+from pathlib import Path as _Path  # noqa: E402
+sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+
+from ias.paths import R1_CONFIG, bootstrap  # noqa: E402
+
+bootstrap()
 
 from alpamayo_memopt import load_config  # noqa: E402
 from alpamayo_memopt.models import TriHookPipeline, get_adapter  # noqa: E402
 from alpamayo_memopt.profiler import interleaved_placement  # noqa: E402
 
-sys.path.insert(0, "/root")
-from ias_calibrate import prepare_inputs_for_clip  # noqa: E402
+from ias.inputs import prepare_inputs_for_clip  # noqa: E402
 
 
 def rebuild_pipeline(loaded, old_resident: set, new_resident: set, device: str):
@@ -50,7 +54,7 @@ def main():
     _hf.set_verbosity_error()
     _hf.disable_progress_bar()
 
-    config = load_config(Path("/root/oom-free-alpamayo/r1_config.json"))
+    config = load_config(R1_CONFIG)
     adapter = get_adapter(config.model.kind)
 
     class Args:

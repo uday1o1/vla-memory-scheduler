@@ -25,12 +25,17 @@ from pathlib import Path
 
 import torch
 
-sys.path.insert(0, "/root")
-from ias_profiles import deadline_s
+from pathlib import Path as _Path  # noqa: E402
+sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 
-WORKER = "/root/ias_dynamic_worker.py"
+from ias.paths import RESULTS, bootstrap  # noqa: E402
+
+bootstrap()
+from ias.profiles import deadline_s
+
+WORKER = str(Path(__file__).resolve().parent / "worker.py")
 PY = "/venv/main/bin/python"
-MARKER = Path("/root/dyn_started.marker")
+MARKER = RESULTS / "dyn_started.marker"
 CLIPS = [
     "d497f01b-4f68-4c27-9a6c-55872a1d6bd6",
     "441057af-5c65-4d8e-993d-713090072248",
@@ -85,8 +90,8 @@ def run_arm(policy: str, placement: str, clip: str, n_calls: int, outdir: Path):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--n-calls", type=int, default=30)
-    p.add_argument("--outdir", type=Path, default=Path("/root/dyn"))
-    p.add_argument("--output", type=Path, default=Path("/root/dynamic_results.json"))
+    p.add_argument("--outdir", type=Path, default=RESULTS / "dyn")
+    p.add_argument("--output", type=Path, default=RESULTS / "dynamic_results.json")
     args = p.parse_args()
     args.outdir.mkdir(parents=True, exist_ok=True)
     torch.cuda.set_device(0)

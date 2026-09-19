@@ -96,8 +96,8 @@ def _selftest():
 
     print("\n=== Spread quality (max consecutive non-resident run; lower is better) ===")
     try:
-        import sys
-        sys.path.insert(0, "/root/oom-free-alpamayo")
+        from .paths import bootstrap
+        bootstrap()
         from alpamayo_memopt.profiler import interleaved_placement
         have_upstream = True
     except Exception:

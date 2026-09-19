@@ -20,15 +20,19 @@ from pathlib import Path
 
 import torch
 
-sys.path.insert(0, "/root/oom-free-alpamayo")
+from pathlib import Path as _Path  # noqa: E402
+sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+
+from ias.paths import R1_CONFIG, RESULTS, bootstrap  # noqa: E402
+
+bootstrap()
 from alpamayo_memopt import load_config  # noqa: E402
 from alpamayo_memopt.models import TriHookPipeline, get_adapter  # noqa: E402
 from alpamayo_memopt.profiler import interleaved_placement  # noqa: E402
 
-sys.path.insert(0, "/root")
-from ias_calibrate import prepare_inputs_for_clip  # noqa: E402
-from ias_policy import CALIBRATION, PolicyState, decide_residency  # noqa: E402
-from ias_contention_generator import steady_load, bursty_load  # noqa: E402
+from ias.inputs import prepare_inputs_for_clip  # noqa: E402
+from ias.policy import CALIBRATION, PolicyState, decide_residency  # noqa: E402
+from ias.contention import steady_load, bursty_load  # noqa: E402
 
 CLIPS = [
     "d497f01b-4f68-4c27-9a6c-55872a1d6bd6",
@@ -114,7 +118,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--n-calls", type=int, default=100)
     p.add_argument("--reps", type=int, default=6)
-    p.add_argument("--output", type=Path, default=Path("/root/results.json"))
+    p.add_argument("--output", type=Path, default=RESULTS / "results.json")
     p.add_argument("--device", type=int, default=0)
     args = p.parse_args()
 
@@ -124,7 +128,7 @@ def main():
     _hf.set_verbosity_error()
     _hf.disable_progress_bar()
 
-    config = load_config(Path("/root/oom-free-alpamayo/r1_config.json"))
+    config = load_config(R1_CONFIG)
     adapter = get_adapter(config.model.kind)
 
     class Args:

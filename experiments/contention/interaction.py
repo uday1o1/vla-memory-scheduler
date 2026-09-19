@@ -19,20 +19,23 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 import torch  # noqa: E402
 
-sys.path.insert(0, "/root/oom-free-alpamayo")
+from pathlib import Path as _Path  # noqa: E402
+sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+
+from ias.paths import R1_CONFIG, bootstrap  # noqa: E402
+
+bootstrap()
 
 from alpamayo_memopt import load_config  # noqa: E402
 from alpamayo_memopt.models import TriHookPipeline, get_adapter  # noqa: E402
 from alpamayo_memopt.profiler import interleaved_placement  # noqa: E402
 
-sys.path.insert(0, "/root")
-from ias_calibrate import prepare_inputs_for_clip  # noqa: E402
+from ias.inputs import prepare_inputs_for_clip  # noqa: E402
 
 
 def dummy_compute_load(stop_flag, device_idx: int = 0, duty_cycle: float = 0.70):
     """Background compute-bound kernel at our locked 70% duty-cycle target."""
-    sys.path.insert(0, "/root")
-    from ias_contention_generator import steady_load
+    from ias.contention import steady_load
     while not stop_flag.is_set():
         steady_load(time.time() + 1.0, duty_cycle=duty_cycle, device_idx=device_idx)
 
@@ -44,7 +47,7 @@ def main():
     _hf.set_verbosity_error()
     _hf.disable_progress_bar()
 
-    config = load_config(Path("/root/oom-free-alpamayo/r1_config.json"))
+    config = load_config(R1_CONFIG)
     adapter = get_adapter(config.model.kind)
 
     class Args:

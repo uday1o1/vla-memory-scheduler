@@ -1,5 +1,5 @@
 # Papers (Sem3/reference/) and cloned repos (Sem3/cloned-repos/) we build on top
-# of live one level up, shared between IAS and DL — not part of this project's
+# of live one level up, shared between IAS and DL and not part of this project's
 # own codebase, not committed here.
 
 __pycache__/

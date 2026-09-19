@@ -1,6 +1,6 @@
 """One model process under a given policy, run against pre-existing memory pressure.
 
-Started by ias_switch_run.py AFTER the pressure holder has allocated, because
+Started by experiments/switching/run.py AFTER the pressure holder has allocated, because
 GPU memory is won by whoever allocates first: a competitor cannot take memory
 this process already holds, so pressure only binds when it pre-exists.
 
@@ -27,14 +27,18 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 import torch
 
-sys.path.insert(0, "/root/oom-free-alpamayo")
-sys.path.insert(0, "/root")
+from pathlib import Path as _Path  # noqa: E402
+sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+
+from ias.paths import R1_CONFIG, bootstrap  # noqa: E402
+
+bootstrap()
 from alpamayo_memopt import load_config
 from alpamayo_memopt.models import TriHookPipeline, get_adapter
 from alpamayo_memopt.profiler import interleaved_placement
-from ias_calibrate import prepare_inputs_for_clip
-from ias_placement import nested_placement
-from ias_profiles import deadline_s, free_gb, profile_for_k, select_profile
+from ias.inputs import prepare_inputs_for_clip
+from ias.placement import nested_placement
+from ias.profiles import deadline_s, free_gb, profile_for_k, select_profile
 
 
 def main():
@@ -84,7 +88,7 @@ def main():
                                   "expected_latency_s": chosen.latency_s,
                                   "footprint_gb": chosen.footprint_gb}
 
-        config = load_config("/root/oom-free-alpamayo/r1_config.json")
+        config = load_config(R1_CONFIG)
         adapter = get_adapter(config.model.kind)
 
         class A: pass

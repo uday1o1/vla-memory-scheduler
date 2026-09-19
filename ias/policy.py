@@ -3,7 +3,7 @@
 Decision cost (cheap): pick target K from an empirical latency(K) calibration
 table, adjusted for sensed GPU contention.
 
-Transition cost (expensive, measured separately - see ias_transition_cost.py):
+Transition cost (expensive, measured separately - see experiments/placement/transition_cost.py):
 shedding layers costs 3-6x more than restoring them (pin_memory() on offload
 vs. plain device copy on restore). Hysteresis exists specifically to avoid
 paying this cost on every call when it isn't justified by real deadline risk.
@@ -78,7 +78,7 @@ def decide_residency(
     effects. It also derives an empirical contention factor
     (observed / calibration.latency_at(current_k)) used to project what
     OTHER K values would achieve under the same slowdown, assuming it
-    applies uniformly across K (confirmed by ias_contention_interaction.py).
+    applies uniformly across K (confirmed by experiments/contention/interaction.py).
     Falls back to the clean calibration when not yet available (e.g. the
     first few calls before a rolling window fills).
 
@@ -129,7 +129,7 @@ def demo():
     # back to max_k, and the deadline-miss override correctly fires - the
     # policy detects the real miss even though residency can't fix it (a
     # genuine finding: uniform-across-K contention has no residency-based
-    # escape, confirmed by ias_contention_interaction.py).
+    # escape, confirmed by experiments/contention/interaction.py).
     real_observed_latency = 9.157
     k = decide_residency(state, deadline_s=deadline, gpu_util=0.8,
                           observed_recent_latency=real_observed_latency)
