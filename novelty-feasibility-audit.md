@@ -1,6 +1,8 @@
 # AI Novelty and Feasibility Audit: GPU Residency Scheduling for Oversized VLA Models
 
-This audit follows two adversarial passes, novelty and feasibility, searching actively for reasons the idea fails or already exists rather than reasons it works. It was revised after an initial experimental design was found to be untestable and the project was replanned around what the evidence supports.
+This audit follows two adversarial passes, novelty and feasibility, searching actively for reasons the idea fails or already exists rather than reasons it works. It was revised twice: first after an initial experimental design was found untestable, and again after feedback on the submitted proposal directed a scope reduction, a simpler policy over a few pre-profiled configurations, and explicit evaluation of what changing residency costs.
+
+Both revisions pointed the same way. The feedback warned that if layer migration latency dominates inference, a theoretically better placement may increase deadline misses. Measurement confirmed that risk is real and then located its largest single cause, which is described under Engineering lift below.
 
 ## AI Critique Summary
 
@@ -40,6 +42,14 @@ These restrict how contention is specified and how timing variance is controlled
 
 **Compute cost.** No model training, only a bounded evaluation sweep. Measured spend to date is under $3 on a rented RTX 3090, including a full experimental run that was discarded when its design was found invalid.
 
-**Engineering lift.** The codebase being extended is small and its authors isolated the residency function. One complication found in practice: the interleaved placement rule is not nested across residency levels, so changing residency at runtime moves roughly three times more layers than the change in count requires. The rule is correct for the one-shot offline decision it was designed for and becomes a cost only when residency is adjusted at runtime.
+**Engineering lift, and the residency-change overhead.** The codebase being extended is small and its authors isolated the residency function.
+
+Measuring what a residency change costs, as the feedback asked, produced the project's strongest result. Changing residency costs 0.3 to 4.7 seconds against 7 to 17 seconds of inference, so migration can indeed consume a large share of a deadline budget. The cost is also asymmetric: shedding layers is 3 to 6 times dearer than restoring them, because offloading pins host memory while restoring is a plain device copy.
+
+The largest single cause is the placement rule itself. The upstream `interleaved_placement` is not nested across residency levels, so a change in K reshuffles layers that did not need to move. This is provable rather than incidental: a transition between residency sets costs the size of their symmetric difference, which is at least the change in count, with equality exactly when one set contains the other. The upstream rule violates that condition; its worst case moves 33 layers to change residency by 1. A nested rule built by recursive bisection meets the bound at every transition, matches the upstream spread metric exactly, matches steady-state latency across 18 clip and residency-level pairs to a mean of 0.098 percent, and produces bit-identical model outputs. Measured transition speedup ranges from 1.33x at coarse adjustments to 6.55x at the fine adjustments a switching policy actually makes.
+
+An ablation separates the two properties: a sequential nested order is equally move-optimal but distributes layers poorly, so nesting and spread are independent and the contribution is a rule achieving both rather than the observation that nesting helps.
+
+This matters for the feedback's specific concern. Migration overhead can undermine adaptive residency, and a substantial part of that overhead was an artifact of a placement rule designed for a decision made once offline.
 
 **Credibility of the foundation.** The codebase is the released artifact of a paper accepted at IEEE RTCSA 2026, an established venue in embedded and real-time systems.

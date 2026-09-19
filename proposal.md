@@ -1,62 +1,69 @@
 # Project Proposal, CMPE 249, Fall 2026
 
-**Title:** Characterizing the Latency and Memory Tradeoff in GPU Residency Scheduling for Oversized Vision-Language-Action Models
+**Title:** Residency Scheduling for Oversized Vision-Language-Action Models: Profile Switching Under GPU Contention
 **Team:** Uday Arora
 **Track:** Deployment Track
+
+This revision responds to feedback on the submitted proposal: reduce initial scope, establish feasibility first, start with a simple policy selecting among a few pre-profiled residency configurations rather than optimizing layer placement on every call, and evaluate the overhead of changing residency itself.
 
 ## 1. Problem Formulation
 
 **Domain problem.** NVIDIA's Alpamayo is an open 10-billion-parameter Vision-Language-Action model for autonomous driving. Its weights total 22GB, exceeding the 12 to 16GB VRAM typical of automotive and consumer GPUs. A peer-reviewed system, `oom-free-alpamayo` (IEEE RTCSA 2026), addresses this by streaming model layers between CPU and GPU memory on demand, with an offline profiling pass deciding which layers stay permanently GPU-resident. This fits the model in memory, at reported inference times of 4.09 seconds (RTX 5070 Ti) and 15.46 seconds (RTX 3080 Ti), both configurations that fail without it.
 
-That residency count is a tunable knob. Keeping more layers resident is faster but occupies more VRAM; keeping fewer is slower but leaves memory free. The existing system fixes this knob at a single point, chosen once by offline capacity arithmetic (VRAM budget divided by layer size) on an otherwise idle GPU, and never revisits it. The tradeoff curve that knob traces out has not been characterized, and the operating points other than maximum-fit have not been examined.
+The residency count is a tunable knob: more resident layers is faster but occupies more VRAM. The existing system fixes that knob at one point, chosen by capacity arithmetic on an idle GPU, and never revisits it. Two consequences follow. The tradeoff curve is unpublished, so the cost of operating at any other point is unknown. And because the choice is made against an idle GPU, it does not hold when the GPU is not idle.
 
-**What this project does.** It measures the full latency and VRAM footprint curve across residency levels, identifies operating points the fixed offline choice forecloses, and establishes where residency adaptation does and does not help. Five related systems were reviewed in full text (see `literature-survey.md`, sources 1 through 5); none characterize intra-model memory-residency as a runtime-tunable tradeoff for a VLA model. The closest, published in June 2026, is runtime-adaptive for a different problem: it load-balances a model that already fits across CPU and GPU, reacting to utilization and queue signals to migrate a bounded set of boundary layers. This project addresses a model that does not fit in GPU memory at all, and treats the residency count itself as the decision variable.
+**Scope of the claim.** This project does not aim to reach the approximately 100ms real-time target stated in Alpamayo's own paper; the newest published competitor reaches 306 to 408ms. The question is narrower and answerable: does selecting among pre-profiled residency configurations using measured GPU state reduce the deadline-miss rate relative to the fixed offline choice, under a controlled competing workload, and does the cost of changing residency undermine that benefit.
 
-**Scope of the claim.** This project does not aim to make Alpamayo meet the approximately 100ms real-time target stated in Alpamayo's own paper. Even the newest published competitor reaches only 306 to 408ms on real driving VLA models. The contribution is characterization and boundary-setting: what the residency knob buys, what it costs, and which forms of resource pressure it can and cannot answer.
-
-**Input and output.** Input: Alpamayo's normal multi-camera and trajectory-history input, plus one signal not used by the current system, the available GPU memory reported by `torch.cuda.mem_get_info`. Output: the model's normal trajectory and reasoning output, plus a per-call record of resident layer count, VRAM footprint, and latency.
+**Input and output.** Input: Alpamayo's normal multi-camera and trajectory-history input, plus one signal the current system does not use, the free GPU memory reported by `torch.cuda.mem_get_info`, which is visible across processes and requires no elevated privilege. Output: the model's normal trajectory and reasoning output, plus a per-call record of the residency profile in force and the resulting latency.
 
 **Target metrics and success criteria, fixed in advance.**
 
-Primary metrics, reported as characterization rather than hypothesis tests:
-1. Inference latency as a function of resident layer count K.
-2. Peak and total VRAM footprint as a function of K.
-3. Tenants concurrently served on one GPU, and per-tenant latency, at residency levels that permit co-location versus the maximum-fit level that does not.
-4. Residency transition cost, separated by direction, since offloading and restoring are not symmetric.
+Primary metric: deadline-miss rate, the fraction of inference calls exceeding the stated budget, compared between the fixed static residency and profile switching under a controlled competing GPU workload.
 
-Secondary metric, reported as a paired hypothesis test: deadline-miss rate under injected compute contention, comparing an adaptive residency policy against the fixed static policy. A paired Wilcoxon signed-rank test with matched-pairs rank-biserial effect size, six repetitions, alpha of 0.05.
+Reported alongside it: completion rate. The two arms can fail differently. A run that never produces a trajectory misses every deadline, but that is a different failure from producing trajectories too slowly, and collapsing them would conceal which is occurring.
 
-Power caveat, stated in advance: a single model family and a small sample size mean only large effects are reliably detectable.
+Secondary metric: the cost of changing residency, measured separately by direction, since offloading and restoring are not symmetric.
 
-Null-result framing, fixed in advance: a finding that residency adaptation does not help in a given regime is reported as exactly that. Establishing where a mechanism fails bounds the claim and is a reportable outcome.
+Deadline definition: the latency of the middle profile times 1.15. The anchor matters. An earlier version of this design anchored the deadline to the fastest configuration that fits, which made the comparison uninformative, because every other configuration then misses by construction and both arms behave identically. Anchoring to the middle profile leaves two profiles meeting the deadline and one missing it, so the comparison can distinguish them. The policy module asserts this separation holds.
 
-**Contention scenarios.** Two distinct forms of resource pressure, because they act on different resources:
-1. Compute contention: a duty-cycled saturating GEMM workload in an independent process sharing the GPU through CUDA MPS, modeled on Kutukcu et al. (`literature-survey.md` source 6). Because fine-grained GPU occupancy cannot be measured in the target environment (see constraints below), contention intensity is defined as the duty cycle of that workload rather than read from a utilization counter.
-2. Memory contention: an independent process holding GPU memory, reducing the budget available to the model.
+Statistical test: paired Wilcoxon signed-rank with matched-pairs rank-biserial effect size, eight repetitions per condition, alpha 0.05. Where every paired difference is zero the test is not reported, since a test on identical arms carries no information; that case is stated directly instead.
+
+Power caveat, stated in advance: one model family and a small sample mean only large effects are reliably detectable.
+
+Null-result framing, fixed in advance: a regime where switching does not help is reported as exactly that. Establishing where a mechanism does not apply bounds the claim.
+
+**Contention scenarios.** Two forms of pressure, acting on different resources:
+
+1. Memory pressure, an independent process holding GPU memory before the model process starts. This is the primary scenario, because residency governs memory and this is where the decision changes the outcome.
+2. Compute contention, a duty-cycled saturating workload in an independent process sharing the GPU through CUDA MPS, modeled on Kutukcu et al. Reported as a boundary result.
 
 ## 2. Proposed Technical Approach
 
-**Foundation.** The project forks `aveeslab/oom-free-alpamayo`. The swapping mechanism itself, Sequential and Pipelined Demand Layering, is correct existing infrastructure and is not modified. The residency decision is the surface under study.
+**Foundation.** The project forks `aveeslab/oom-free-alpamayo`. The swapping mechanism, Sequential and Pipelined Demand Layering, is correct existing infrastructure and is not modified. The residency decision is the surface under study.
 
-1. Characterization: measure latency and VRAM footprint across the residency range on real inference, establishing the tradeoff curve the existing system leaves unexplored.
-2. Co-location: determine how many model instances can share one GPU at residency levels below maximum-fit, and at what per-tenant latency cost, against the maximum-fit configuration that permits only one.
-3. Memory-aware residency: a policy that reads available GPU memory and selects a residency level that fits, compared against the fixed offline choice under pre-existing memory pressure.
-4. Boundary: an adaptive policy evaluated against the static baseline under compute contention, testing whether residency adaptation can mitigate compute interference at all.
-5. Transition cost: measure the cost of changing residency at runtime, separated by direction, and evaluate whether the existing interleaved placement rule is appropriate when residency is no longer chosen once.
+**Milestone 1, feasibility and characterization.** Reproduce the system on the rented GPU and characterize latency and memory behavior across residency levels under a controlled competing workload, before implementing any policy.
 
-**Data sources.** The model, `nvidia/Alpamayo-R1-10B`, is open and ungated, licensed under OpenMDW-1.1. The codebase is MIT licensed. Representative driving-scene input frames come from NVIDIA's `PhysicalAI-Autonomous-Vehicles` dataset, which is gated by an automatic license agreement; six distinct clips are used, one per repetition, so that paired comparisons hold input constant within a repetition while varying scene content across repetitions.
+**Milestone 2, profile switching.** Three pre-profiled configurations taken from the measured curves rather than chosen arbitrarily. The switching rule reads free GPU memory and selects the fastest profile that fits with margin. This replaces an earlier design that re-derived an arbitrary residency count on every inference call; both the feedback on the submitted proposal and this project's own transition-cost measurements argue against that approach, since changing residency costs a substantial fraction of an inference and an unconstrained policy can spend much of its budget reconfiguring.
 
-**Technical modifications.** A memory-sensing residency selection policy replacing the fixed offline choice; a characterization harness measuring latency and footprint across residency levels; compute and memory contention generators; a multi-tenant co-location harness; and an evaluation pipeline.
+**Milestone 3, evaluation.** Static residency against profile switching across memory pressure levels, eight repetitions each, reporting deadline-miss rate, completion rate, and latency.
+
+**Milestone 4, residency change overhead.** Measure what changing residency costs, separated by direction, and determine whether that cost undermines the benefit of switching. This addresses the concern that a theoretically better placement may increase deadline misses if migration dominates inference.
+
+**Stretch goal.** A finer-grained online scheduler, and co-location of multiple model instances at reduced residency.
+
+**Data sources.** `nvidia/Alpamayo-R1-10B`, open and ungated under OpenMDW-1.1. Driving-scene inputs from NVIDIA's `PhysicalAI-Autonomous-Vehicles` dataset, which is gated and additionally requires an access token with the public-gated-repository permission enabled. Six distinct clips are used, one per repetition, so input varies across repetitions while hardware is held constant.
 
 ## 3. Target Environment Constraints
 
-The following were confirmed by direct test on the rented GPU and constrain what can be measured. They are stated here because they shape the metric definitions above.
+Confirmed by direct test on the rented GPU. They constrain what can be measured and are stated because they shape the metric definitions above.
 
-- GPU graphics clock locking is denied by the hypervisor even with root and passwordless sudo. Clock frequency is therefore logged during runs so that throttling can be detected and disclosed rather than silently absorbed.
+- GPU graphics clock locking is denied by the hypervisor even with root and passwordless sudo, so timing runs cannot pin clocks. Clock frequency is logged instead, so throttling is detectable and disclosable.
 - The DCGM Profiling module, which provides fine-grained SM-occupancy counters, fails to load. Hardware performance counter access is commonly restricted in multi-tenant GPU environments.
-- `nvidia-smi` reports `utilization.gpu` as 100 percent at every duty cycle from 20 to 100 percent, so it detects whether any kernel is active rather than fractional occupancy, and cannot be used to calibrate contention intensity.
-- `torch.cuda.mem_get_info` is cross-process aware and is used as the memory-pressure sensing signal. It requires no elevated privilege, so a deployed system would have the same signal available.
+- `nvidia-smi` reports `utilization.gpu` as 100 percent at every duty cycle from 20 to 100 percent, so it detects whether any kernel is active rather than fractional occupancy and cannot calibrate contention intensity. Intensity is therefore defined as the duty cycle of the injected workload rather than measured.
+- `torch.cuda.mem_get_info` is cross-process aware and requires no elevated privilege, so it is used as the memory-pressure signal and a deployed system would have the same signal available.
 
 ## 4. Device Available and Maintainer
 
-Device available: NVIDIA RTX 5050 (desktop) for code development; model loading, inference, and contention experiments run on a rented RTX 3090 (24GB VRAM), since Alpamayo-R1-10B's 22GB footprint exceeds the local card's memory. Maintainer: Uday Arora; Claude Code access is requested to support implementation throughout the semester.
+Device available: NVIDIA RTX 5050 (desktop) for code development; model loading, inference, and contention experiments run on a rented RTX 3090 with 24GB VRAM, since Alpamayo-R1-10B's 22GB footprint exceeds the local card's memory. The submitted proposal named an A100-class GPU; the RTX 3090 was used instead, and is closer to the consumer and automotive class the problem targets.
+
+Maintainer: Uday Arora; Claude Code access is requested to support implementation throughout the semester.
