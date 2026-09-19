@@ -35,10 +35,7 @@ sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 from ias.paths import bootstrap  # noqa: E402
 
 bootstrap()
-try:
-    from ias.placement import nested_placement, max_gap, priority_order
-except ImportError:
-    from ias.placement import nested_placement, max_gap, priority_order
+from ias.placement import nested_placement, max_gap, priority_order  # noqa: E402
 
 TOTAL = 36
 
@@ -76,13 +73,17 @@ def main():
     print("=== Move-optimality: does each rule achieve the |dK| lower bound? ===")
     verify_lower_bound(nested_placement, "nested")
     verify_lower_bound(sequential_placement, "sequential")
+    # Only an absent upstream package may skip the comparison; any other
+    # failure is a bug here and must surface rather than be reported as a
+    # missing dependency.
     try:
         from alpamayo_memopt.profiler import interleaved_placement
-        verify_lower_bound(interleaved_placement, "upstream")
-        have_upstream = True
-    except Exception:
+    except ModuleNotFoundError:
         have_upstream = False
         print("  upstream       (unavailable here; run on the GPU host)")
+    else:
+        verify_lower_bound(interleaved_placement, "upstream")
+        have_upstream = True
 
     print("\n=== Ablation: is the benefit from nesting alone, or from the order? ===")
     print("  Both nested and sequential are nested, so both are move-optimal.")

@@ -95,12 +95,18 @@ def _selftest():
     print("  layer 0 always resident, final layer never resident, exact count: ok")
 
     print("\n=== Spread quality (max consecutive non-resident run; lower is better) ===")
+    # Only a genuinely absent upstream package may skip this comparison. Any
+    # other failure is a bug here and must not masquerade as a missing
+    # dependency, which would let the self-check pass having compared nothing.
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from ias.paths import bootstrap
+    bootstrap()
     try:
-        from .paths import bootstrap
-        bootstrap()
         from alpamayo_memopt.profiler import interleaved_placement
         have_upstream = True
-    except Exception:
+    except ModuleNotFoundError:
         have_upstream = False
 
     if have_upstream:
