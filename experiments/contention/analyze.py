@@ -23,7 +23,7 @@ def miss_rate(latencies, deadline):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--input", type=Path,
-                   default=Path("data/compute_contention_reps1-2.json"))
+                   default=Path("data/compute_contention_3090.json"))
     args = p.parse_args()
 
     data = json.loads(args.input.read_text())

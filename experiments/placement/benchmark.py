@@ -36,6 +36,7 @@ from alpamayo_memopt.models import TriHookPipeline, get_adapter
 from alpamayo_memopt.profiler import interleaved_placement
 from ias.inputs import prepare_inputs_for_clip
 from ias.placement import nested_placement
+from ias.provenance import run_metadata
 
 CLIPS = [
     "d497f01b-4f68-4c27-9a6c-55872a1d6bd6",
@@ -118,7 +119,7 @@ def main():
         return TriHookPipeline(loaded.vlm_layers, loaded.vit_blocks,
                                 loaded.expert_layers, list(t), device=device)
 
-    results = {"transition": {}, "latency": {}}
+    results = {"meta": run_metadata(args), "transition": {}, "latency": {}}
 
     # ---- A. transition cost versus adaptation granularity ----
     print(f"\n=== A. Transition cost by granularity ({args.transition_reps} reps) ===")

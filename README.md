@@ -27,6 +27,7 @@ ias/                        importable library, shared by every experiment
   contention.py             competing GPU workload generator
   inputs.py                 driving-clip input preparation
   memory.py                 VRAM accounting and a competing allocator
+  provenance.py             hardware and invocation recorded into every result
 
 experiments/
   characterize/             latency and footprint per residency level
@@ -37,7 +38,7 @@ experiments/
   colocation/               two tenants sharing one GPU
   probes/                   bounded investigations that settled a design question
 
-data/                       measured results, one JSON per run
+data/                       measured results, one JSON per run, suffixed by GPU
 setup/setup_instance.sh     one-command GPU instance setup
 ```
 

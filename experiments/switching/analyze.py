@@ -36,7 +36,7 @@ def rank_biserial(a: list[float], b: list[float]) -> float:
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--input", type=Path, default=Path("data/switch_results.json"))
+    p.add_argument("--input", type=Path, default=Path("data/switch_results_3090.json"))
     args = p.parse_args()
 
     records = json.loads(args.input.read_text())

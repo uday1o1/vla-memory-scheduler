@@ -31,6 +31,7 @@ from alpamayo_memopt.models import TriHookPipeline, get_adapter
 from alpamayo_memopt.profiler import interleaved_placement
 from ias.inputs import prepare_inputs_for_clip
 from ias.placement import nested_placement
+from ias.provenance import run_metadata
 
 CLIPS = [
     "d497f01b-4f68-4c27-9a6c-55872a1d6bd6",
@@ -100,7 +101,7 @@ def main():
         torch.cuda.synchronize()
         return extract_traj(out)
 
-    results = {}
+    results = {"meta": run_metadata()}
     print(f"\n{'K':<6}{'clip':<10}{'identical':<12}{'max abs diff':<16}{'shape'}")
     all_identical = True
     for k in KS:
@@ -128,13 +129,14 @@ def main():
             }
             print(f"{k:<6}{clip[:8]:<10}{str(identical):<12}{max_diff:<16.3e}{list(out_u.shape)}")
 
-    RESULTS / "placement_correctness.json".write_text(json.dumps(results, indent=2))
+    out = RESULTS / "placement_correctness.json"
+    out.write_text(json.dumps(results, indent=2))
     print(f"\nAll outputs bit-identical across placements: {all_identical}")
     if not all_identical:
         print("Any nonzero difference would need explaining before the latency")
         print("claim means anything, since the two rules would not be computing")
         print("the same thing.")
-    print("\nSaved -> /root/placement_correctness.json")
+    print(f"\nSaved -> {out}")
 
 
 if __name__ == "__main__":
