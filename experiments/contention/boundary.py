@@ -30,7 +30,7 @@ from scheduler.profiles import deadline_s
 
 WORKER = str(REPO_ROOT / "experiments" / "switching" / "worker.py")
 CONTENTION = str(REPO_ROOT / "scheduler" / "contention.py")
-PY = "/venv/main/bin/python"
+PY = sys.executable  # the interpreter running this script, not a fixed install
 CLIPS = [
     "d497f01b-4f68-4c27-9a6c-55872a1d6bd6",
     "441057af-5c65-4d8e-993d-713090072248",

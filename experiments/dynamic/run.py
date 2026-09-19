@@ -34,7 +34,7 @@ bootstrap()
 from scheduler.profiles import deadline_s
 
 WORKER = str(Path(__file__).resolve().parent / "worker.py")
-PY = "/venv/main/bin/python"
+PY = sys.executable  # the interpreter running this script, not a fixed install
 MARKER = RESULTS / "dyn_started.marker"
 CLIPS = [
     "d497f01b-4f68-4c27-9a6c-55872a1d6bd6",

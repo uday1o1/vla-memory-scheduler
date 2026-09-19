@@ -1,7 +1,7 @@
 """Filesystem locations, resolved rather than hardcoded.
 
 Experiments run both on a development machine and on rented GPU instances
-where the checkout lands in different places, so nothing here assumes /root.
+where the checkout lands in different places, so no absolute path is assumed.
 Set ALPAMAYO_HOME to point at the upstream oom-free-alpamayo clone if it is
 not a sibling of this repository.
 """
@@ -15,13 +15,26 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _find_upstream() -> Path:
+    """Locate the oom-free-alpamayo clone.
+
+    Looked for in order: ALPAMAYO_HOME, then under WORKDIR if the setup script
+    placed it there, then beside this repository, then the home directory. The
+    default in the last resort is the sibling, which is where setup puts it.
+    """
     env = os.environ.get("ALPAMAYO_HOME")
     if env:
         return Path(env).expanduser().resolve()
-    for candidate in (REPO_ROOT.parent / "oom-free-alpamayo", Path("/root/oom-free-alpamayo")):
+
+    sibling = REPO_ROOT.parent / "oom-free-alpamayo"
+    candidates = [sibling, Path.home() / "oom-free-alpamayo"]
+    workdir = os.environ.get("WORKDIR")
+    if workdir:
+        candidates.insert(0, Path(workdir).expanduser() / "oom-free-alpamayo")
+
+    for candidate in candidates:
         if candidate.is_dir():
             return candidate
-    return REPO_ROOT.parent / "oom-free-alpamayo"
+    return sibling
 
 
 UPSTREAM = _find_upstream()

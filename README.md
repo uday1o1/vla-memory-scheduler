@@ -42,11 +42,46 @@ data/                       measured results, one JSON per run, suffixed by GPU
 setup/setup_instance.sh     one-command GPU instance setup
 ```
 
-Every experiment is a standalone script run from the repository root, for example
-`python experiments/placement/theory.py`. Scripts locate the upstream clone and
-each other by resolving paths from their own location, so the checkout can live
-anywhere; set `ALPAMAYO_HOME` if the `oom-free-alpamayo` clone is not a sibling
-directory, and `VLA_RESULTS` to write run output somewhere other than `data/`.
+## Reproducing
+
+Every experiment is a standalone script run from the repository root. Paths are
+resolved from each file's own location, so the checkout can live anywhere.
+
+**Without a GPU.** The placement results are combinatorial and the statistics run
+against the measurements committed in `data/`, so both reproduce on any machine:
+
+```
+pip install -r requirements.txt
+python scheduler/placement.py              # nesting, spread and move counts
+python experiments/placement/theory.py     # move-optimality and the ablation
+python experiments/switching/analyze.py    # static against profile switching
+python experiments/contention/analyze.py   # the compute-contention boundary
+```
+
+The two scripts that compare against the upstream rule report that it is
+unavailable and skip that column when the Alpamayo packages are absent, rather
+than failing.
+
+**With a GPU.** Taking the measurements needs a CUDA GPU with at least 12GB of
+VRAM, the upstream Alpamayo packages, and access to a gated dataset:
+
+```
+bash setup/setup_instance.sh     # clones upstream, installs, fetches weights, profiles
+python experiments/characterize/calibrate.py     # latency per residency level
+python experiments/placement/benchmark.py        # transition cost and latency parity
+python experiments/switching/run.py              # the primary experiment
+```
+
+`nvidia/PhysicalAI-Autonomous-Vehicles` is gated and needs a Hugging Face token
+whose "read public gated repos" permission is explicitly enabled, which is not
+granted by default. Place it where `huggingface_hub` stores tokens, or export
+`HF_TOKEN`. Setup honours `WORKDIR` for where the upstream clones live and
+`VENV` for a virtualenv to activate; experiments honour `ALPAMAYO_HOME` for a
+clone that is not a sibling of this repository and `VLA_RESULTS` for an output
+directory other than `data/`.
+
+Results are written with the GPU, driver, PCIe link and invocation that produced
+them, so any number in `data/` can be traced to its hardware.
 
 ## Foundation
 

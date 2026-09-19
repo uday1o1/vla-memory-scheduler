@@ -1,0 +1,14 @@
+# Dependencies for the parts of this work that need no GPU: the placement
+# theory results, the library self-checks, and every statistical analysis of
+# the committed measurements in data/.
+#
+#   pip install -r requirements.txt
+#   python experiments/placement/theory.py
+#   python experiments/switching/analyze.py
+#
+# Running the measurements themselves additionally needs a CUDA GPU and the
+# upstream Alpamayo packages, which setup/setup_instance.sh installs. Those
+# are editable installs from git and pin torch to 2.8.0 themselves, so they
+# are deliberately not pinned here.
+
+scipy>=1.11

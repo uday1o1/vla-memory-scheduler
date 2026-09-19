@@ -16,7 +16,10 @@
 # permission is explicitly enabled. That permission is not granted by default,
 # including for fine-grained tokens, and access fails with 403 without it.
 #
-# Usage:  HF_TOKEN=hf_... bash setup_instance.sh
+# Usage:  bash setup/setup_instance.sh
+#   WORKDIR   where the upstream clones live (default: parent of this repo)
+#   VENV      a virtualenv to activate, if not already active
+#   HF_TOKEN  overrides the stored Hugging Face token
 
 set -euo pipefail
 
@@ -35,27 +38,52 @@ if [ -z "${HF_TOKEN:-}" ]; then
     exit 1
 fi
 
+# WORKDIR is where the upstream clones and model cache go. It defaults to the
+# parent of this repository, so scheduler/paths.py finds the clones as siblings
+# without configuration. Override it for a machine laid out differently.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+WORKDIR="${WORKDIR:-$(dirname "$REPO_ROOT")}"
+mkdir -p "$WORKDIR"
+
 echo "=== System packages ==="
 # DCGM is deliberately not installed. Its profiling module fails to load in
 # these containers, so the fine-grained occupancy counters it exists for are
 # unavailable anyway, and none of the experiments here use it. It is a 911MB
 # download that stalled setup for nine minutes on one host before being cut.
-apt-get update -qq
-apt-get install -y -qq git wget python3-pip
+if command -v apt-get >/dev/null 2>&1 && [ "$(id -u)" = "0" ]; then
+    apt-get update -qq
+    apt-get install -y -qq git wget python3-pip
+else
+    echo "  skipped: needs apt-get and root. Ensure git, wget and pip are present."
+fi
 
-source /venv/main/bin/activate
+# Activate a virtualenv only if one is present and none is already active.
+# Rented images often ship one; a local machine usually does not.
+if [ -z "${VIRTUAL_ENV:-}" ] && [ -n "${VENV:-}" ] && [ -f "$VENV/bin/activate" ]; then
+    source "$VENV/bin/activate"
+elif [ -z "${VIRTUAL_ENV:-}" ] && [ -f /venv/main/bin/activate ]; then
+    source /venv/main/bin/activate
+fi
+PIP="pip"
+command -v uv >/dev/null 2>&1 && PIP="uv pip"
 
 echo "=== Repositories ==="
-cd /root
+cd "$WORKDIR"
 [ -d oom-free-alpamayo ] || git clone -q https://github.com/aveeslab/oom-free-alpamayo.git
 [ -d alpamayo ] || git clone -q https://github.com/NVlabs/alpamayo.git
 
 echo "=== Python packages ==="
-cd /root/alpamayo
-uv pip install -q -e . --no-build-isolation-package flash-attn
-cd /root/oom-free-alpamayo
+# flash-attn imports torch during its own build, so it must not be built in
+# isolation. Plain pip fails here; uv with the exemption is what works.
+cd "$WORKDIR/alpamayo"
+if [ "$PIP" = "uv pip" ]; then
+    uv pip install -q -e . --no-build-isolation-package flash-attn
+else
+    pip install -q -e . --no-build-isolation
+fi
+cd "$WORKDIR/oom-free-alpamayo"
 pip install -q -e .
-uv pip install -q accelerate
+$PIP install -q accelerate scipy
 
 echo "=== Verifying CUDA ==="
 python - <<'PY'
@@ -76,13 +104,14 @@ PY
 
 echo "=== Model weights (about 21GB, one time) ==="
 python - <<'PY'
+import os
 from huggingface_hub import snapshot_download
-snapshot_download("nvidia/Alpamayo-R1-10B", cache_dir="/root/hf_cache")
+snapshot_download("nvidia/Alpamayo-R1-10B", cache_dir=os.environ.get("MODEL_CACHE") or os.path.expanduser("~/hf_cache"))
 print("  model downloaded")
 PY
 
 echo "=== Profiling for this machine ==="
-cd /root/oom-free-alpamayo
+cd "$WORKDIR/oom-free-alpamayo"
 # Clock locking is denied inside these containers even as root, so timing runs
 # cannot pin clocks. --no-lock-clock is required, not optional.
 python scripts/profile.py --model r1 --no-lock-clock --output r1_config.json
