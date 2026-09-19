@@ -7,3 +7,6 @@ __pycache__/
 .DS_Store
 PROJECT_DETAILS.md
 MANUSCRIPT.md
+.claude/
+.agents/
+skills-lock.json
