@@ -110,18 +110,30 @@ def _selftest():
         have_upstream = False
 
     if have_upstream:
+        # Swept across the whole range, not a sample. Spread parity holds at
+        # most residency levels but not all, and a curated subset of K hides
+        # exactly the levels where it does not.
         print(f"  {'K':<6}{'nested':<10}{'upstream':<10}{'moves nested':<15}{'moves upstream'}")
+        worse, better = [], []
         prev_n = prev_u = None
-        for k in (8, 16, 20, 24, 30, 33):
+        for k in range(2, total - 2):
             n = nested_placement(k, total)
             u = interleaved_placement(k, total)
+            gn, gu = max_gap(n, total), max_gap(u, total)
+            if gn > gu:
+                worse.append(k)
+            elif gn < gu:
+                better.append(k)
             mn = mu = "-"
             if prev_n is not None:
                 sn, su = set(n), set(u)
                 mn = len(set(prev_n) - sn) + len(sn - set(prev_n))
                 mu = len(set(prev_u) - su) + len(su - set(prev_u))
-            print(f"  {k:<6}{max_gap(n, total):<10}{max_gap(u, total):<10}{str(mn):<15}{mu}")
+            print(f"  {k:<6}{gn:<10}{gu:<10}{str(mn):<15}{mu}")
             prev_n, prev_u = n, u
+        print(f"\n  spread equal at all K except worse at {worse}, better at {better}")
+        print("  Move-optimality is a proven property at every K; spread parity")
+        print("  is not, and holds only from K=19 upward without exception.")
     else:
         print(f"  {'K':<6}{'nested max_gap'}")
         for k in (8, 16, 20, 24, 30, 33):
