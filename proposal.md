@@ -51,7 +51,7 @@ Null-result framing, fixed in advance: a regime where switching does not help is
 
 **Stretch goal.** A finer-grained online scheduler, and co-location of multiple model instances at reduced residency.
 
-**Data sources.** `nvidia/Alpamayo-R1-10B`, open and ungated under OpenMDW-1.1. Driving-scene inputs from NVIDIA's `PhysicalAI-Autonomous-Vehicles` dataset, which is gated and additionally requires an access token with the public-gated-repository permission enabled. Six distinct clips are used, one per repetition, so input varies across repetitions while hardware is held constant.
+**Data sources.** `nvidia/Alpamayo-R1-10B`, open and ungated under OpenMDW-1.1. Driving-scene inputs from NVIDIA's `PhysicalAI-Autonomous-Vehicles` dataset, which is gated and additionally requires an access token with the public-gated-repository permission enabled. Six distinct clips are used, cycled across the eight repetitions per condition, so input varies across repetitions while hardware is held constant. Both arms of a pair see the same clip, so the paired test compares like with like.
 
 ## 3. Target Environment Constraints
 
