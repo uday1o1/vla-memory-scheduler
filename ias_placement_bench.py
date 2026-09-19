@@ -41,28 +41,47 @@ CLIPS = [
     "7d109673-d967-4b02-93c5-6d2d25d964d0",
 ]
 
-# Adaptation paths spanning a range of granularities. Each oscillates around
-# a centre so total displacement is comparable while step size varies.
-PATHS = {
-    1: [30, 31, 30, 29, 30, 31, 32, 31, 30],
-    2: [30, 28, 30, 32, 30, 28, 26, 28, 30],
-    3: [30, 27, 30, 33, 30, 27, 24, 27, 30],
-    5: [30, 25, 30, 33, 28, 23, 18, 23, 28],
-    8: [30, 22, 30, 22, 30, 22, 30, 22, 30],
-    12: [30, 18, 30, 18, 30, 18, 30, 18, 30],
-}
-LATENCY_KS = [16, 24, 33]
+def build_paths(max_k: int) -> dict[int, list[int]]:
+    """Adaptation paths of varying step size, scaled to what the card can hold.
+
+    Each path oscillates around a centre so total displacement stays
+    comparable while the step size varies. Centring on max_k - 3 keeps every
+    excursion inside the card's capacity; hardcoding counts sized for a 24GB
+    card runs out of memory on a 16GB one.
+    """
+    c = max_k - 3
+    paths = {}
+    for step in (1, 2, 3, 5, 8, 12):
+        seq, k, direction = [c], c, 1
+        for i in range(8):
+            if i % 4 == 3:
+                direction *= -1
+            k = max(2, min(max_k, k + direction * step))
+            seq.append(k)
+        paths[step] = seq
+    return paths
+
+
+def build_latency_ks(max_k: int) -> list[int]:
+    """Residency levels for the latency-parity check, spread over the range."""
+    return sorted({max(2, int(max_k * f)) for f in (0.5, 0.75, 1.0)})
 
 
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--transition-reps", type=int, default=5)
     p.add_argument("--latency-reps", type=int, default=3)
+    p.add_argument("--max-k", type=int, default=33,
+                   help="largest residency this card can hold; paths scale to it")
     p.add_argument("--output", type=Path, default=Path("/root/placement_bench.json"))
     args = p.parse_args()
 
     from transformers.utils import logging as _hf
     _hf.set_verbosity_error(); _hf.disable_progress_bar()
+    PATHS = build_paths(args.max_k)
+    LATENCY_KS = build_latency_ks(args.max_k)
+    print(f"max_k={args.max_k}  latency Ks={LATENCY_KS}")
+
     device = "cuda:0"
     torch.cuda.set_device(0)
 

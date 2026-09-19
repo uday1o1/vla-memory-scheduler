@@ -29,8 +29,12 @@ if [ -z "${HF_TOKEN:-}" ]; then
 fi
 
 echo "=== System packages ==="
+# DCGM is deliberately not installed. Its profiling module fails to load in
+# these containers, so the fine-grained occupancy counters it exists for are
+# unavailable anyway, and none of the experiments here use it. It is a 911MB
+# download that stalled setup for nine minutes on one host before being cut.
 apt-get update -qq
-apt-get install -y -qq git wget python3-pip datacenter-gpu-manager
+apt-get install -y -qq git wget python3-pip
 
 source /venv/main/bin/activate
 

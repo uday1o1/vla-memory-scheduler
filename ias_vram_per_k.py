@@ -8,6 +8,7 @@ runs a real inference call to capture peak, not just resident, footprint.
 """
 from __future__ import annotations
 
+import argparse
 import gc
 import os
 import sys
@@ -29,6 +30,12 @@ def gb(x):
 
 
 def main():
+    # K values are card specific. A 16GB card cannot reach the counts a 24GB
+    # card can, so hardcoding them would crash on smaller hardware.
+    p = argparse.ArgumentParser()
+    p.add_argument("--k-values", type=int, nargs="+", default=[33, 24, 16, 8])
+    args = p.parse_args()
+
     from transformers.utils import logging as _hf
     _hf.set_verbosity_error(); _hf.disable_progress_bar()
     device = "cuda:0"
@@ -58,7 +65,7 @@ def main():
 
     print(f"{'K':<6}{'peak_alloc_GB':<16}{'process_used_GB':<18}{'2x fits in 23.58?'}")
     current = set()
-    for k in (33, 24, 16, 8):
+    for k in args.k_values:
         target = set(interleaved_placement(k, n_vlm)) if k > 0 else set()
         for i in target - current:
             loaded.vlm_layers[i].to(device)
