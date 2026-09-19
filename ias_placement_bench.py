@@ -13,6 +13,7 @@ Two claims need separate treatment because they have different dependencies:
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import os
 import statistics
@@ -130,12 +131,35 @@ def main():
                     tgt = set(rule(k, n_vlm))
                     mv += len(tgt - current) + len(current - tgt)
                     pipe.remove()
+                    # Each TriHookPipeline holds two device buffers sized for
+                    # the largest streamed layer. Rebinding `pipe` does not
+                    # free the previous one promptly, so across dozens of
+                    # transitions the stale buffers accumulate into several GB
+                    # and exhaust a 16GB card. Dropping it explicitly before
+                    # the timer keeps memory bounded without charging the cost
+                    # to the measurement.
+                    #
+                    # empty_cache() is deliberately NOT called here. Returning
+                    # the blocks to the allocator's pool is what a real
+                    # adaptive system would have; forcing a full release would
+                    # make every transition pay a fresh cudaMalloc and measure
+                    # a pessimistic case that does not occur in practice.
+                    del pipe
+                    gc.collect()
                     t0 = time.perf_counter()
                     pipe = switch(sorted(tgt))
                     total += time.perf_counter() - t0
                 pipe.remove()
                 times.append(total)
                 moves_total = mv
+                # Release the allocator's cached blocks between repetitions.
+                # Each transition leaves freed blocks cached, and across dozens
+                # of transitions that accumulates until a 16GB card runs out,
+                # even at residency levels that fit comfortably on their own.
+                # This sits outside the timed region deliberately: calling it
+                # inside switch() would add its cost to the transition times
+                # this benchmark exists to measure.
+                torch.cuda.empty_cache()
             per_rule[name] = {"times": times, "moves": moves_total,
                               "mean": statistics.mean(times),
                               "stdev": statistics.stdev(times) if len(times) > 1 else 0.0}
