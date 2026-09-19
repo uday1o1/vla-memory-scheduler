@@ -5,7 +5,7 @@ idle_ms)) of a saturating GEMM kernel, not measured via nvidia-smi or DCGM.
 
 Why: nvidia-smi's utilization.gpu is a coarse "any kernel active during the
 sample window" signal - it reports 100% at every duty cycle from 20% to 100%,
-confirmed empirically (see PROJECT_DETAILS.md). DCGM's Profiling module
+confirmed empirically (see novelty-feasibility-audit.md). DCGM's Profiling module
 (the actual fine-grained SM-occupancy counters) fails to load in this
 container - a common cloud-GPU restriction on hardware performance-counter
 access for multi-tenant security. Neither path can measure fractional

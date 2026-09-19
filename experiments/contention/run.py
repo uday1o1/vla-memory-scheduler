@@ -2,7 +2,7 @@
 
 Contention sensing: since DCGM's Profiling module (fine-grained SM-occupancy
 counters) fails to load in this container, and nvidia-smi's utilization.gpu
-is too coarse (see PROJECT_DETAILS.md), the adaptive policy senses contention
+is too coarse (see novelty-feasibility-audit.md), the adaptive policy senses contention
 from its OWN recent latency drift - a rolling window of observed call
 latencies compared against the no-contention calibration for the current K.
 This is a realistic, privilege-free signal: no real deployed system would

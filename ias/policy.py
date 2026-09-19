@@ -82,11 +82,10 @@ def decide_residency(
     Falls back to the clean calibration when not yet available (e.g. the
     first few calls before a rolling window fills).
 
-    An earlier version used a fixed placeholder multiplier instead of real
-    observed data, which caused the deadline-miss check to badly
-    underestimate real contention (see PROJECT_DETAILS.md) and left the
-    policy never reacting to a sustained ~32% real slowdown. Grounding both
-    the miss-check and the projection in actual observed latency fixes this.
+    Both the miss-check and the projection are grounded in observed latency
+    rather than a fixed multiplier, because contention slowdown is not known
+    ahead of time: a sustained slowdown near 32 percent was measured, which
+    any static estimate would have to guess at.
 
     Hysteresis: only actually change K if the ideal target differs from the
     current K by more than `hysteresis_layers`, OR if staying at current_k

@@ -23,7 +23,7 @@ ias/                        importable library, shared by every experiment
   paths.py                  resolves the repo, the upstream clone, and the results directory
   placement.py              nested residency placement via recursive bisection
   profiles.py               pre-profiled residency configurations and the switching rule
-  policy.py                 continuous-K policy, retained for the withdrawn design
+  policy.py                 continuous-K residency policy, evaluated under contention
   contention.py             competing GPU workload generator
   inputs.py                 driving-clip input preparation
   memory.py                 VRAM accounting and a competing allocator

@@ -35,7 +35,8 @@ class Profile:
         return f"{self.name}(K={self.k}, {self.latency_s:.2f}s, {self.footprint_gb:.2f}GB)"
 
 
-# Measured on the RTX 3090; see PROJECT_DETAILS.md for the full curves.
+# Measured on the RTX 3090 by experiments/characterize/calibrate.py and
+# experiments/characterize/vram_per_k.py. Re-measure before use on other hardware.
 PROFILES: tuple[Profile, ...] = (
     Profile("fast", 33, 7.02, 17.24),
     Profile("mid", 24, 12.31, 14.14),
