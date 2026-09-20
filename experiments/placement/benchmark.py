@@ -86,8 +86,8 @@ def main():
     p.add_argument("--transition-reps", type=int, default=5)
     p.add_argument("--latency-reps", type=int, default=3)
     p.add_argument("--nested-first", action="store_true",
-                   help="measure nested before upstream, to separate a placement "
-                        "effect from an effect of measurement order")
+                   help="measure nested before upstream in both parts, to separate a "
+                        "placement effect from an effect of measurement order")
     p.add_argument("--latency-warmup", type=int, default=1,
                    help="untimed passes after each placement change before timing")
     p.add_argument("--max-k", type=int, default=33,
@@ -139,7 +139,10 @@ def main():
     print(f"{'mean|dK|':<10}{'upstream s':<22}{'nested s':<22}{'speedup':<10}{'moves u/n'}")
     for gran, path in sorted(PATHS.items()):
         per_rule = {}
-        for name, rule in (("upstream", interleaved_placement), ("nested", nested_placement)):
+        rules = [("upstream", interleaved_placement), ("nested", nested_placement)]
+        if args.nested_first:
+            rules.reverse()
+        for name, rule in rules:
             times, moves_total = [], 0
             for _ in range(args.transition_reps):
                 pipe = switch(rule(path[0], n_vlm))
