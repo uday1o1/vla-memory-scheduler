@@ -42,6 +42,45 @@ data/                       measured results, one JSON per run, suffixed by GPU
 setup/setup_instance.sh     one-command GPU instance setup
 ```
 
+## Results
+
+**Static residency against profile switching.** Eight repetitions per condition,
+six clips cycled, paired Wilcoxon signed-rank. The deadline is the middle
+profile's latency times 1.15, which is 14.16s. Memory pressure is an
+independent process holding VRAM before the model process starts.
+
+| pressure | static: completion / miss | switching: completion / miss | paired test |
+|---|---|---|---|
+| 0GB | 1.00 / 0.00 | 1.00 / 0.00 | arms identical, no test |
+| 4GB | 1.00 / 0.00 | 1.00 / 0.00 | arms identical, no test |
+| 7GB | **0.00** / 1.00 | **1.00** / **0.00** | W=0, p=0.0078, rank-biserial -1.000 |
+| 10GB | **0.00** / 1.00 | **1.00** / 0.75 | p=0.50, not significant on miss rate |
+
+At 7GB and 10GB the static configuration does not load at all, so it produces
+no trajectory. Switching selects a smaller profile and completes every call.
+Two qualifications belong with this result. At 10GB switching completes but
+still misses three quarters of its deadlines, and the miss-rate difference
+there is not significant, so the gain at that pressure is in completing at all
+rather than in meeting deadlines. And p=0.0078 is the smallest value a
+signed-rank test can return for eight pairs, so the 7GB result is a complete
+separation whose precision is bounded by the sample size, not a marginal one.
+
+Completion rate is reported beside miss rate because the two arms fail
+differently: a run that never produces a trajectory misses every deadline, but
+that is a different failure from producing trajectories too slowly.
+
+**Compute contention, a negative result.** A duty-cycled saturating workload
+sharing the GPU under CUDA MPS slows every residency level proportionally, by
+0.988x, 1.005x and 1.031x at K=16, 24 and 33. Residency has no lever against
+compute contention, which is why memory pressure is the primary scenario.
+
+**Residency change overhead.** Changing residency costs 0.3 to 4.7 seconds
+against 7 to 17 seconds of inference, and is asymmetric: shedding layers is
+three to six times dearer than restoring them, because offloading pins host
+memory while restoring is a plain device copy. The nested placement rule
+reduces this, by up to 21.84x at the single-level adjustments a switching
+policy makes.
+
 ## Reproducing
 
 Every experiment is a standalone script run from the repository root. Paths are
