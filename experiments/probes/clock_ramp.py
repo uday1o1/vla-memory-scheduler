@@ -86,6 +86,9 @@ def main() -> None:
     p.add_argument("--reps", type=int, default=5)
     p.add_argument("--warmup", type=int, default=3)
     p.add_argument("--nested-first", action="store_true")
+    p.add_argument("--preheat", type=int, default=0,
+                   help="placement changes to perform before measuring, to "
+                        "reproduce the accumulated state of a long benchmark run")
     p.add_argument("--output", type=Path, default=RESULTS / "clock_ramp.json")
     args = p.parse_args()
 
@@ -126,6 +129,23 @@ def main() -> None:
     order = [("upstream", interleaved_placement), ("nested", nested_placement)]
     if args.nested_first:
         order.reverse()
+
+    if args.preheat:
+        # A long run leaves the allocator holding blocks from dozens of prior
+        # placements. If the penalty needs that state rather than measurement
+        # order, reproducing the churn should reproduce the penalty.
+        print(f"Preheating with {args.preheat} placement changes...")
+        cycle = [7, 14, 10, 33, 16, 24]
+        for n in range(args.preheat):
+            k = cycle[n % len(cycle)]
+            rule = nested_placement if n % 2 else interleaved_placement
+            ph = switch(rule(k, n_vlm))
+            ph.start_iteration()
+            with torch.no_grad():
+                adapter.run(loaded, inputs, a)
+            torch.cuda.synchronize()
+            ph.remove()
+        print("  preheat done")
 
     sampler = ClockSampler()
     sampler.start()
