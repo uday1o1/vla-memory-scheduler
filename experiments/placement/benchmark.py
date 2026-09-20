@@ -77,6 +77,8 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--transition-reps", type=int, default=5)
     p.add_argument("--latency-reps", type=int, default=3)
+    p.add_argument("--latency-warmup", type=int, default=1,
+                   help="untimed passes after each placement change before timing")
     p.add_argument("--max-k", type=int, default=33,
                    help="largest residency this card can hold; paths scale to it")
     p.add_argument("--output", type=Path, default=RESULTS / "placement_bench.json")
@@ -184,10 +186,15 @@ def main():
             row = {}
             for name, rule in (("upstream", interleaved_placement), ("nested", nested_placement)):
                 pipe = switch(rule(k, n_vlm))
-                pipe.start_iteration()
-                with torch.no_grad():
-                    adapter.run(loaded, inputs, a)
-                torch.cuda.synchronize()
+                # Warm up until timings settle. One pass is enough on a fast
+                # link, but on a slow one the first call after a placement
+                # change carries a large one-time cost that would otherwise be
+                # averaged into the result and read as a placement effect.
+                for _ in range(args.latency_warmup):
+                    pipe.start_iteration()
+                    with torch.no_grad():
+                        adapter.run(loaded, inputs, a)
+                    torch.cuda.synchronize()
                 ts = []
                 for _ in range(args.latency_reps):
                     t0 = time.perf_counter()
