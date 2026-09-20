@@ -77,6 +77,9 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--transition-reps", type=int, default=5)
     p.add_argument("--latency-reps", type=int, default=3)
+    p.add_argument("--nested-first", action="store_true",
+                   help="measure nested before upstream, to separate a placement "
+                        "effect from an effect of measurement order")
     p.add_argument("--latency-warmup", type=int, default=1,
                    help="untimed passes after each placement change before timing")
     p.add_argument("--max-k", type=int, default=33,
@@ -184,7 +187,10 @@ def main():
         for clip in CLIPS:
             inputs = prepare_inputs_for_clip(loaded, clip, device)
             row = {}
-            for name, rule in (("upstream", interleaved_placement), ("nested", nested_placement)):
+            order = [("upstream", interleaved_placement), ("nested", nested_placement)]
+            if args.nested_first:
+                order.reverse()
+            for name, rule in order:
                 pipe = switch(rule(k, n_vlm))
                 # Warm up until timings settle. One pass is enough on a fast
                 # link, but on a slow one the first call after a placement
