@@ -9,6 +9,14 @@ Two claims need separate treatment because they have different dependencies:
   B. Latency parity. The claim that nested matches upstream's steady-state
      latency must hold across scene content, so it is measured across all
      six clips at several residency levels.
+
+Part B must be run in both orders on hardware whose clocks are not stable.
+Where the GPU is power capped and clock locking is denied, the arm measured
+first for a given clip carries a penalty of roughly two and a half seconds
+that three warmup passes do not absorb, large enough to read as an eleven
+percent placement effect. Running once with --nested-first identifies the
+affected rows, since a genuine placement difference keeps its sign when the
+order is swapped and an artifact does not.
 """
 from __future__ import annotations
 

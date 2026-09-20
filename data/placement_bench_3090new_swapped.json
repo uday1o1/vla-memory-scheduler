@@ -1,0 +1,224 @@
+{
+  "meta": {
+    "utc": "2026-09-20T03:23:49+00:00",
+    "argv": [
+      "experiments/placement/benchmark.py",
+      "--max-k",
+      "14",
+      "--transition-reps",
+      "1",
+      "--latency-reps",
+      "5",
+      "--latency-warmup",
+      "3",
+      "--nested-first",
+      "--output",
+      "/root/vla-memory-scheduler/data/placement_bench_3090new_swapped.json"
+    ],
+    "args": {
+      "transition_reps": "1",
+      "latency_reps": "5",
+      "nested_first": "True",
+      "latency_warmup": "3",
+      "max_k": "14",
+      "output": "/root/vla-memory-scheduler/data/placement_bench_3090new_swapped.json"
+    },
+    "torch": "2.8.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA GeForce RTX 3090",
+    "gpu_total_gb": 23.56,
+    "driver_version": "580.178.04",
+    "pcie_link_gen_max": "3",
+    "pcie_link_width_max": "16"
+  },
+  "transition": {
+    "1": {
+      "upstream": {
+        "times": [
+          47.857193122967146
+        ],
+        "moves": 124,
+        "mean": 47.857193122967146,
+        "stdev": 0.0
+      },
+      "nested": {
+        "times": [
+          3.027892900048755
+        ],
+        "moves": 8,
+        "mean": 3.027892900048755,
+        "stdev": 0.0
+      }
+    },
+    "2": {
+      "upstream": {
+        "times": [
+          40.47909312392585
+        ],
+        "moves": 101,
+        "mean": 40.47909312392585,
+        "stdev": 0.0
+      },
+      "nested": {
+        "times": [
+          5.720198153983802
+        ],
+        "moves": 13,
+        "mean": 5.720198153983802,
+        "stdev": 0.0
+      }
+    },
+    "3": {
+      "upstream": {
+        "times": [
+          27.850069744861685
+        ],
+        "moves": 66,
+        "mean": 27.850069744861685,
+        "stdev": 0.0
+      },
+      "nested": {
+        "times": [
+          8.822191009996459
+        ],
+        "moves": 18,
+        "mean": 8.822191009996459,
+        "stdev": 0.0
+      }
+    },
+    "5": {
+      "upstream": {
+        "times": [
+          20.42308164318092
+        ],
+        "moves": 50,
+        "mean": 20.42308164318092,
+        "stdev": 0.0
+      },
+      "nested": {
+        "times": [
+          8.866775706061162
+        ],
+        "moves": 20,
+        "mean": 8.866775706061162,
+        "stdev": 0.0
+      }
+    },
+    "8": {
+      "upstream": {
+        "times": [
+          15.778133891057223
+        ],
+        "moves": 41,
+        "mean": 15.778133891057223,
+        "stdev": 0.0
+      },
+      "nested": {
+        "times": [
+          9.225306753069162
+        ],
+        "moves": 23,
+        "mean": 9.225306753069162,
+        "stdev": 0.0
+      }
+    },
+    "12": {
+      "upstream": {
+        "times": [
+          13.922374429763295
+        ],
+        "moves": 39,
+        "mean": 13.922374429763295,
+        "stdev": 0.0
+      },
+      "nested": {
+        "times": [
+          9.657515367027372
+        ],
+        "moves": 27,
+        "mean": 9.657515367027372,
+        "stdev": 0.0
+      }
+    }
+  },
+  "latency": {
+    "7": {
+      "d497f01b-4f68-4c27-9a6c-55872a1d6bd6": {
+        "nested": 22.293047415767795,
+        "upstream": 22.285311784571967
+      },
+      "441057af-5c65-4d8e-993d-713090072248": {
+        "nested": 19.869545567780733,
+        "upstream": 17.563218591967598
+      },
+      "59aba96d-8920-4e49-8edb-c08bd800edf1": {
+        "nested": 24.3704868913861,
+        "upstream": 21.354673466435635
+      },
+      "8825b1fa-0abf-4a28-b444-25fef71cadcb": {
+        "nested": 18.571597708226182,
+        "upstream": 18.489394212397748
+      },
+      "89e4e404-80ea-42e2-bf8e-8395af5ab111": {
+        "nested": 19.41902627341915,
+        "upstream": 19.411298850807363
+      },
+      "7d109673-d967-4b02-93c5-6d2d25d964d0": {
+        "nested": 21.98611594198737,
+        "upstream": 19.425827912380917
+      }
+    },
+    "10": {
+      "d497f01b-4f68-4c27-9a6c-55872a1d6bd6": {
+        "nested": 23.176715297182092,
+        "upstream": 20.51503127538599
+      },
+      "441057af-5c65-4d8e-993d-713090072248": {
+        "nested": 16.227538044634276,
+        "upstream": 16.255686756572686
+      },
+      "59aba96d-8920-4e49-8edb-c08bd800edf1": {
+        "nested": 19.607550582801924,
+        "upstream": 19.599039315967822
+      },
+      "8825b1fa-0abf-4a28-b444-25fef71cadcb": {
+        "nested": 19.491119484626687,
+        "upstream": 17.04914582518395
+      },
+      "89e4e404-80ea-42e2-bf8e-8395af5ab111": {
+        "nested": 20.49529712155927,
+        "upstream": 17.881104449788108
+      },
+      "7d109673-d967-4b02-93c5-6d2d25d964d0": {
+        "nested": 17.88625364000909,
+        "upstream": 17.874471669644116
+      }
+    },
+    "14": {
+      "d497f01b-4f68-4c27-9a6c-55872a1d6bd6": {
+        "nested": 18.028594042826445,
+        "upstream": 17.9887126195943
+      },
+      "441057af-5c65-4d8e-993d-713090072248": {
+        "nested": 16.409504716005177,
+        "upstream": 14.410441670194269
+      },
+      "59aba96d-8920-4e49-8edb-c08bd800edf1": {
+        "nested": 19.71148341980297,
+        "upstream": 17.279364118399098
+      },
+      "8825b1fa-0abf-4a28-b444-25fef71cadcb": {
+        "nested": 15.235849266173318,
+        "upstream": 15.119699616194703
+      },
+      "89e4e404-80ea-42e2-bf8e-8395af5ab111": {
+        "nested": 15.886894019227475,
+        "upstream": 15.843716194620356
+      },
+      "7d109673-d967-4b02-93c5-6d2d25d964d0": {
+        "nested": 18.04774221961852,
+        "upstream": 15.850160597404464
+      }
+    }
+  }
+}
