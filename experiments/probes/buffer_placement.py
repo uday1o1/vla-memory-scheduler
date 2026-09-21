@@ -85,6 +85,11 @@ def main() -> None:
     p.add_argument("--k", type=int, default=16)
     p.add_argument("--rebuilds", type=int, default=14)
     p.add_argument("--per-block", type=int, default=5)
+    p.add_argument("--reuse-stream", action="store_true",
+                   help="hand each rebuilt pipeline the previous one's staging "
+                        "buffers, events and prefetch stream, so reconstruction "
+                        "creates none of them. If the slowdown stops, those "
+                        "objects are what carries it.")
     p.add_argument("--output", type=Path, default=RESULTS / "buffer_placement.json")
     args = p.parse_args()
 
@@ -131,8 +136,27 @@ def main() -> None:
     print(f"{'#':<4}{'median s':<12}{'buffers':<10}{'first ptr':<20}"
           f"{'align KB':<11}{'offset in 2MB'}")
 
+    carried = None
     for r in range(args.rebuilds):
         pipe = build()
+        if args.reuse_stream and carried is not None:
+            # set_bufs exists upstream to share these across modules. Used here
+            # to share them across rebuilds instead.
+            for attr, saved in carried.items():
+                h = getattr(pipe, attr, None)
+                if h is not None and saved["bufs"]:
+                    h.set_bufs(saved["bufs"], saved["events"], saved["stream"])
+        if args.reuse_stream and carried is None:
+            carried = {}
+            for attr in ("vlm_hook", "vis_hook", "exp_hook"):
+                h = getattr(pipe, attr, None)
+                if h is None:
+                    continue
+                carried[attr] = {
+                    "bufs": list(getattr(h, "gpu_bufs", None) or []),
+                    "events": list(getattr(h, "compute_done", None) or []),
+                    "stream": getattr(h, "prefetch_stream", None),
+                }
         facts = buffer_facts(pipe)
         for _ in range(3):
             run_once(pipe)
