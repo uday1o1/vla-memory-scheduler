@@ -54,6 +54,10 @@ def main() -> None:
     p.add_argument("--k", type=int, default=16)
     p.add_argument("--blocks", type=int, default=10)
     p.add_argument("--per-block", type=int, default=6)
+    p.add_argument("--rebuild-only", action="store_true",
+                   help="rebuild the pipeline between blocks while moving no "
+                        "layers at all, which separates reconstruction from "
+                        "the layer movement it normally accompanies")
     p.add_argument("--transition-from", type=int, default=None,
                    help="if set, return to K via this level between blocks, so "
                         "each block is preceded by one identical transition")
@@ -104,10 +108,23 @@ def main() -> None:
         run_once()
 
     results = {"meta": run_metadata(args), "k": args.k, "blocks": []}
+    import gc as _gc
     print(f"\nK={args.k}, no residency changes at any point\n")
     print(f"{'block':<8}{'median s':<12}{'min':<10}{'max':<10}{'spread'}")
     for b in range(args.blocks):
-        if args.transition_from is not None and b > 0:
+        if args.rebuild_only and b > 0:
+            # Identical residency before and after. The only thing that
+            # happens is that the pipeline object is discarded and built
+            # again, which is what every earlier transition also did.
+            pipe.remove()
+            del pipe
+            _gc.collect()
+            pipe = TriHookPipeline(loaded.vlm_layers, loaded.vit_blocks,
+                                   loaded.expert_layers, list(resident),
+                                   device=device)
+            for _ in range(3):
+                run_once()
+        elif args.transition_from is not None and b > 0:
             # One identical transition before each block. Everything else is
             # held fixed, so differences between blocks belong to the
             # transition and to nothing else.
