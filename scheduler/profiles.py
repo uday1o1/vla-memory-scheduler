@@ -21,7 +21,10 @@ profile that fits with margin.
 """
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -35,9 +38,29 @@ class Profile:
         return f"{self.name}(K={self.k}, {self.latency_s:.2f}s, {self.footprint_gb:.2f}GB)"
 
 
+def load_profiles(path: str | Path) -> tuple[Profile, ...]:
+    """Read profiles measured on the machine in use.
+
+    The file is a list of objects with name, k, latency_s and footprint_gb,
+    as produced by experiments/characterize/build_profiles.py. Profiles are
+    returned fastest first, which is the order the selection rule expects.
+    """
+    entries = json.loads(Path(path).read_text())
+    if isinstance(entries, dict):
+        entries = entries["profiles"]
+    built = tuple(
+        Profile(e["name"], int(e["k"]), float(e["latency_s"]), float(e["footprint_gb"]))
+        for e in entries
+    )
+    return tuple(sorted(built, key=lambda p: p.latency_s))
+
+
 # Measured on the RTX 3090 by experiments/characterize/calibrate.py and
-# experiments/characterize/vram_per_k.py. Re-measure before use on other hardware.
-PROFILES: tuple[Profile, ...] = (
+# experiments/characterize/vram_per_k.py. These are the defaults, and they are
+# specific to that card: latency and footprint both differ on other hardware,
+# and the deadline is derived from them. Point VLA_PROFILES at a file from
+# build_profiles.py to use profiles measured on the machine in use.
+DEFAULT_PROFILES: tuple[Profile, ...] = (
     Profile("fast", 33, 7.02, 17.24),
     Profile("mid", 24, 12.31, 14.14),
     Profile("compact", 16, 17.06, 11.28),
@@ -48,6 +71,11 @@ PROFILES: tuple[Profile, ...] = (
 # below it then misses by construction, so both arms miss and the comparison
 # carries no information. Anchored here, `fast` and `mid` meet the deadline
 # and `compact` does not, which is what makes the comparison graded.
+PROFILES: tuple[Profile, ...] = (
+    load_profiles(os.environ["VLA_PROFILES"])
+    if os.environ.get("VLA_PROFILES") else DEFAULT_PROFILES
+)
+
 DEADLINE_ANCHOR = "mid"
 DEADLINE_MARGIN = 1.15
 

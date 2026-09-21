@@ -121,6 +121,8 @@ echo "Ready. The residency profiles in scheduler/profiles.py were measured on an
 echo "RTX 3090 and must be re-measured on different hardware before use:"
 echo "    python experiments/characterize/calibrate.py    # latency per residency level"
 echo "    python experiments/characterize/vram_per_k.py   # footprint per residency level"
+echo "    python experiments/characterize/build_profiles.py"
+echo "  then run the policy with VLA_PROFILES pointing at the file it writes."
 echo
 echo "The placement results are hardware independent in move count and should"
 echo "reproduce exactly; only the seconds per move should differ:"

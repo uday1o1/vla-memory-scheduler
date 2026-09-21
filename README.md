@@ -107,9 +107,19 @@ VRAM, the upstream Alpamayo packages, and access to a gated dataset:
 ```
 bash setup/setup_instance.sh     # clones upstream, installs, fetches weights, profiles
 python experiments/characterize/calibrate.py     # latency per residency level
+python experiments/characterize/vram_per_k.py    # footprint per residency level
+python experiments/characterize/build_profiles.py
+VLA_PROFILES=data/profiles.json \
+  python experiments/switching/run.py            # the primary experiment
 python experiments/placement/benchmark.py        # transition cost and latency parity
-python experiments/switching/run.py              # the primary experiment
 ```
+
+The profiles committed in `scheduler/profiles.py` were measured on an RTX 3090
+and the deadline is derived from them, so they describe that card and not the
+one running. `build_profiles.py` turns the two characterization runs into a
+profile file for the machine in use, and refuses to emit one whose deadline
+fails to separate the profiles, since a comparison against static residency
+would then carry no information.
 
 `nvidia/PhysicalAI-Autonomous-Vehicles` is gated and needs a Hugging Face token
 whose "read public gated repos" permission is explicitly enabled, which is not

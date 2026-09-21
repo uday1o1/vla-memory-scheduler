@@ -9,6 +9,8 @@ runs a real inference call to capture peak, not just resident, footprint.
 from __future__ import annotations
 
 import argparse
+import json
+from pathlib import Path
 import gc
 import os
 import sys
@@ -20,13 +22,14 @@ import torch
 from pathlib import Path as _Path  # noqa: E402
 sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 
-from scheduler.paths import R1_CONFIG, bootstrap  # noqa: E402
+from scheduler.paths import R1_CONFIG, RESULTS, bootstrap  # noqa: E402
 
 bootstrap()
 from alpamayo_memopt import load_config
 from alpamayo_memopt.models import TriHookPipeline, get_adapter
 from alpamayo_memopt.profiler import interleaved_placement
 from scheduler.inputs import prepare_inputs_for_clip
+from scheduler.provenance import run_metadata
 
 
 def gb(x):
@@ -38,6 +41,8 @@ def main():
     # card can, so hardcoding them would crash on smaller hardware.
     p = argparse.ArgumentParser()
     p.add_argument("--k-values", type=int, nargs="+", default=[33, 24, 16, 8])
+    p.add_argument("--output", type=Path, default=RESULTS / "vram_per_k.json",
+                   help="footprint per residency level, machine readable")
     args = p.parse_args()
 
     from transformers.utils import logging as _hf
@@ -67,7 +72,8 @@ def main():
     free_ess, _ = torch.cuda.mem_get_info()
     print(f"Essentials + inputs only (K=0 resident): uses {gb(total - free_ess):.2f}GB\n")
 
-    print(f"{'K':<6}{'peak_alloc_GB':<16}{'process_used_GB':<18}{'2x fits in 23.58?'}")
+    measured: dict[str, dict] = {}
+    print(f"{'K':<6}{'peak_alloc_GB':<16}{'process_used_GB':<18}{'2x fits?'}")
     current = set()
     for k in args.k_values:
         target = set(interleaved_placement(k, n_vlm)) if k > 0 else set()
@@ -92,10 +98,22 @@ def main():
         process_used = total - free_now
         pipe.remove()
         fits2x = (2 * process_used) < total
+        measured[str(k)] = {
+            "peak_alloc_gb": gb(peak),
+            "process_used_gb": gb(process_used),
+            "two_fit": bool(fits2x),
+        }
         print(f"{k:<6}{gb(peak):<16.2f}{gb(process_used):<18.2f}{fits2x}")
 
     print("\nNote: process_used includes the allocator's cached reservation,")
     print("which is what a co-located process actually cannot take.")
+
+    args.output.write_text(json.dumps({
+        "meta": run_metadata(args),
+        "gpu_total_gb": gb(total),
+        "by_k": measured,
+    }, indent=2))
+    print(f"\nSaved -> {args.output}")
 
 
 if __name__ == "__main__":
