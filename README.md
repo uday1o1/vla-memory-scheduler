@@ -91,6 +91,21 @@ it does not establish that smaller or more frequent adjustments repay
 themselves, and the rebuild cost described below is a reason to think frequent
 ones may not.
 
+**A cost of rebuilding the streaming pipeline, and how to remove it.** On the
+RTX 3090, reconstructing the pipeline leaves inference about 13 percent slower
+for as long as that pipeline lives, on roughly one reconstruction in four,
+with residency unchanged and no layers moved. A residency change requires a
+reconstruction, so an adaptive policy draws on this repeatedly where a static
+one never does.
+
+Eight causes were excluded, including clock ramp, allocator fragmentation and
+staging buffer placement, the last because fast and slow rebuilds hold
+identical buffer addresses. What remains is the CUDA events and prefetch
+stream each reconstruction creates. Sharing those across rebuilds, through an
+entry point the upstream hook already provides, removes the effect: 14
+consecutive rebuilds span 1.06 percent against 12.4 to 13.5 percent without
+it.
+
 **Compute contention, a negative result.** A duty-cycled saturating workload
 sharing the GPU under CUDA MPS slows every residency level proportionally, by
 0.988x, 1.005x and 1.031x at K=16, 24 and 33. Residency has no lever against
