@@ -1,0 +1,82 @@
+{
+  "meta": {
+    "utc": "2026-09-21T06:48:08+00:00",
+    "argv": [
+      "experiments/placement/pinning_scaling.py",
+      "--target",
+      "16",
+      "--from-levels",
+      "17",
+      "20",
+      "24",
+      "30",
+      "--reps",
+      "6",
+      "--output",
+      "/root/results/pinning_scaling_3090.json"
+    ],
+    "args": {
+      "target": "16",
+      "from_levels": "[17, 20, 24, 30]",
+      "reps": "6",
+      "settle": "3",
+      "output": "/root/results/pinning_scaling_3090.json"
+    },
+    "torch": "2.8.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA GeForce RTX 3090",
+    "gpu_total_gb": 23.56,
+    "driver_version": "580.178.04",
+    "pcie_link_gen_max": "3",
+    "pcie_link_width_max": "16"
+  },
+  "target": 16,
+  "arms": {
+    "baseline": {
+      "from": null,
+      "median": 16.980124727997463,
+      "pinned_after": 20,
+      "new_pins": 0
+    },
+    "from_17": {
+      "from": 17,
+      "median": 19.095159568008967,
+      "pinned_before": 19,
+      "pinned_after": 20,
+      "new_pins": 1,
+      "pct_vs_baseline": 12.455944075158383
+    },
+    "from_20": {
+      "from": 20,
+      "median": 19.00181019899901,
+      "pinned_before": 16,
+      "pinned_after": 20,
+      "new_pins": 4,
+      "pct_vs_baseline": 11.906187400779903
+    },
+    "from_24": {
+      "from": 24,
+      "median": 16.951425458537415,
+      "pinned_before": 12,
+      "pinned_after": 20,
+      "new_pins": 8,
+      "pct_vs_baseline": -0.16901683538712822
+    },
+    "from_30": {
+      "from": 30,
+      "median": 16.979896592965815,
+      "pinned_before": 6,
+      "pinned_after": 20,
+      "new_pins": 14,
+      "pct_vs_baseline": -0.0013435415540371306
+    },
+    "repeat": {
+      "from": 30,
+      "median": 19.028320892481133,
+      "pinned_before": 6,
+      "pinned_after": 20,
+      "new_pins": 14,
+      "pct_vs_baseline": 12.062315190809688
+    }
+  }
+}

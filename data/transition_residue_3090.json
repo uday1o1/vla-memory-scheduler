@@ -1,0 +1,141 @@
+{
+  "meta": {
+    "utc": "2026-09-21T06:23:10+00:00",
+    "argv": [
+      "experiments/placement/transition_residue.py",
+      "--target",
+      "16",
+      "--from-above",
+      "24",
+      "--from-below",
+      "8",
+      "--reps",
+      "8",
+      "--output",
+      "/root/results/transition_residue_3090.json"
+    ],
+    "args": {
+      "target": "16",
+      "from_above": "24",
+      "from_below": "8",
+      "reps": "8",
+      "settle": "3",
+      "output": "/root/results/transition_residue_3090.json"
+    },
+    "torch": "2.8.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA GeForce RTX 3090",
+    "gpu_total_gb": 23.56,
+    "driver_version": "580.178.04",
+    "pcie_link_gen_max": "3",
+    "pcie_link_width_max": "16"
+  },
+  "target": 16,
+  "arms": {
+    "baseline": {
+      "times": [
+        16.985138225951232,
+        16.994811065029353,
+        16.98987636808306,
+        16.986088615027256,
+        16.989418869954534,
+        16.989931852091104,
+        16.994557946920395,
+        16.997920510009862
+      ],
+      "median": 16.989904110087082,
+      "alloc": {
+        "allocated_gb": 9.228415966033936,
+        "reserved_gb": 10.173828125,
+        "inactive_split_gb": 0.0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0
+      },
+      "note": ""
+    },
+    "shed": {
+      "times": [
+        19.30148930696305,
+        19.27290225995239,
+        19.29189359396696,
+        19.26009263191372,
+        19.289868402061984,
+        19.197187658050098,
+        19.31135121791158,
+        19.259342703036964
+      ],
+      "median": 19.281385331007186,
+      "alloc": {
+        "allocated_gb": 9.228415966033936,
+        "reserved_gb": 13.044921875,
+        "inactive_split_gb": 0.0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0
+      },
+      "note": ""
+    },
+    "shed_then_empty_cache": {
+      "times": [
+        19.30166776292026,
+        19.271749660023488,
+        19.28350694803521,
+        19.27141201600898,
+        19.343626040033996,
+        19.28976175596472,
+        19.33283336996101,
+        19.331094034016132
+      ],
+      "median": 19.29571475944249,
+      "alloc": {
+        "allocated_gb": 9.228415966033936,
+        "reserved_gb": 10.173828125,
+        "inactive_split_gb": 0.0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0
+      },
+      "note": ""
+    },
+    "restore": {
+      "times": [
+        16.99429127795156,
+        16.98051778797526,
+        16.97399683506228,
+        16.98225535999518,
+        16.989450013963506,
+        16.988104927004315,
+        16.989992024027742,
+        16.98250721907243
+      ],
+      "median": 16.985306073038373,
+      "alloc": {
+        "allocated_gb": 9.228415966033936,
+        "reserved_gb": 10.173828125,
+        "inactive_split_gb": 0.0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0
+      },
+      "note": ""
+    },
+    "restore_then_empty_cache": {
+      "times": [
+        16.984668856021017,
+        16.985966567066498,
+        16.983619194012135,
+        16.98010709998198,
+        16.993762383935973,
+        16.96702711598482,
+        16.9782228480326,
+        16.971653189044446
+      ],
+      "median": 16.981863146997057,
+      "alloc": {
+        "allocated_gb": 9.228415966033936,
+        "reserved_gb": 10.173828125,
+        "inactive_split_gb": 0.0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0
+      },
+      "note": ""
+    }
+  }
+}
