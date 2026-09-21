@@ -54,6 +54,9 @@ def main() -> None:
     p.add_argument("--k", type=int, default=16)
     p.add_argument("--blocks", type=int, default=10)
     p.add_argument("--per-block", type=int, default=6)
+    p.add_argument("--transition-from", type=int, default=None,
+                   help="if set, return to K via this level between blocks, so "
+                        "each block is preceded by one identical transition")
     p.add_argument("--pause", type=float, default=5.0,
                    help="idle seconds between blocks, since a state that "
                         "survives idling is different from one that does not")
@@ -104,6 +107,22 @@ def main() -> None:
     print(f"\nK={args.k}, no residency changes at any point\n")
     print(f"{'block':<8}{'median s':<12}{'min':<10}{'max':<10}{'spread'}")
     for b in range(args.blocks):
+        if args.transition_from is not None and b > 0:
+            # One identical transition before each block. Everything else is
+            # held fixed, so differences between blocks belong to the
+            # transition and to nothing else.
+            for i in nested_placement(args.transition_from, n_vlm):
+                loaded.vlm_layers[i].to(device)
+            for i in set(resident) - set(nested_placement(args.transition_from, n_vlm)):
+                loaded.vlm_layers[i].to("cpu")
+            torch.cuda.synchronize()
+            for i in resident:
+                loaded.vlm_layers[i].to(device)
+            for i in set(nested_placement(args.transition_from, n_vlm)) - set(resident):
+                loaded.vlm_layers[i].to("cpu")
+            torch.cuda.synchronize()
+            for _ in range(3):
+                run_once()
         times = [run_once() for _ in range(args.per_block)]
         med = statistics.median(times)
         results["blocks"].append({"block": b + 1, "times": times, "median": med})
