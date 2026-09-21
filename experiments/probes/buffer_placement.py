@@ -55,19 +55,25 @@ def buffer_facts(pipe) -> list[dict]:
     """Address, size and alignment of each staging buffer this pipeline holds."""
     facts = []
     seen = set()
-    for attr in ("hooks", "modules", "_hooks"):
-        for h in (getattr(pipe, attr, None) or []):
-            for b in (getattr(h, "gpu_bufs", None) or []):
+    # TriHookPipeline holds three DoubleBufHook instances, named for the
+    # three streamed module groups, each with its own pair of staging buffers.
+    for attr in ("vlm_hook", "vis_hook", "exp_hook"):
+        h = getattr(pipe, attr, None)
+        if h is None:
+            continue
+        for b in (getattr(h, "gpu_bufs", None) or []):
+            if True:
                 if b is None or id(b) in seen:
                     continue
                 seen.add(id(b))
                 ptr = b.data_ptr()
                 facts.append({
+                    "hook": attr,
                     "ptr": ptr,
                     "ptr_hex": hex(ptr),
                     "bytes": b.numel() * b.element_size(),
-                    # Largest power of two that divides the address, capped,
-                    # which is what "how aligned is it" means in practice.
+                    # Largest power of two dividing the address, capped, which
+                    # is what "how aligned is it" means in practice.
                     "align_kb": min(1 << 20, (ptr & -ptr)) // 1024,
                     "offset_in_2mb": ptr % (2 * MB),
                 })
