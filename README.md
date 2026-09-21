@@ -69,6 +69,28 @@ Completion rate is reported beside miss rate because the two arms fail
 differently: a run that never produces a trajectory misses every deadline, but
 that is a different failure from producing trajectories too slowly.
 
+**Does changing residency mid-run repay its own cost?** This is the feedback's
+specific concern, that migration latency could make a better configuration
+miss more deadlines. Memory is held so the process starts on the `compact`
+profile, then released part way through the run, and the adaptive arm upgrades
+while the fixed arm does not.
+
+| clip | before upgrade | after upgrade | change |
+|---|---|---|---|
+| d497f01b | 16.95s | 6.99s | **-58.8%** |
+| 441057af | 13.53s | 6.44s | -52.4% |
+| 59aba96d | 16.25s | 6.88s | -57.7% |
+| 8825b1fa | 14.34s | 6.60s | -54.0% |
+
+The upgrade repays itself many times over: a gain above fifty percent against
+a migration cost of a few seconds paid once. Both placement rules were run and
+reach the same latency afterwards, 6.99s against 6.95s on the first clip,
+which is the parity result again in a different setting. The qualification is
+that this is a large profile change under a large change in available memory;
+it does not establish that smaller or more frequent adjustments repay
+themselves, and the rebuild cost described below is a reason to think frequent
+ones may not.
+
 **Compute contention, a negative result.** A duty-cycled saturating workload
 sharing the GPU under CUDA MPS slows every residency level proportionally, by
 0.988x, 1.005x and 1.031x at K=16, 24 and 33. Residency has no lever against
