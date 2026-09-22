@@ -1,0 +1,62 @@
+{
+  "meta": {
+    "utc": "2026-09-22T11:48:13+00:00",
+    "argv": [
+      "experiments/placement/stream_reuse_value.py",
+      "--k-a",
+      "24",
+      "--k-b",
+      "16",
+      "--trials",
+      "8",
+      "--switches",
+      "3",
+      "--calls",
+      "3",
+      "--output",
+      "/root/results/stream_reuse_value_3090.json"
+    ],
+    "args": {
+      "k_a": "24",
+      "k_b": "16",
+      "trials": "8",
+      "switches": "3",
+      "calls": "3",
+      "slow_threshold": "5.0",
+      "output": "/root/results/stream_reuse_value_3090.json"
+    },
+    "torch": "2.8.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA GeForce RTX 3090",
+    "gpu_total_gb": 23.56,
+    "driver_version": "580.178.04",
+    "pcie_link_gen_max": "3",
+    "pcie_link_width_max": "16"
+  },
+  "settings": {
+    "rebuild_stream": {
+      "trial_medians": [
+        16.760631862503942,
+        16.770343119002064,
+        16.768045919990982,
+        16.776379781505966,
+        16.65723386749596,
+        16.653475084000092,
+        16.655530233998434,
+        16.655459260000498
+      ]
+    },
+    "reuse_stream": {
+      "trial_medians": [
+        18.871231375494972,
+        16.629419938501087,
+        18.996794771992427,
+        16.664937794499565,
+        18.84590611400199,
+        16.6564825509995,
+        18.853162195999175,
+        16.649361018498894
+      ]
+    }
+  }
+}

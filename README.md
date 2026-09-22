@@ -131,8 +131,14 @@ reconstructions drew eight distinct streams, each twice. Two ran at 18.83 to
 stream in both groups. The streams come from a pool that is cycled and two of
 its eight members are persistently slower, so a reconstruction is a draw.
 Two in eight is 25 percent, against measured rates of 29, 20 and 29 percent.
-The fix follows: create the prefetch stream once and share it across residency
-changes, so no further draw is made.
+
+Sharing a stream is not by itself the remedy. Eight trials that each kept the
+stream they first drew came out 18.87, 16.63, 19.00, 16.66, 18.85, 16.66,
+18.85 and 16.65 seconds, alternating because the pool is cycled in order.
+Holding one stream keeps whichever was drawn, turning an intermittent penalty
+on a quarter of reconstructions into a permanent one on a quarter of
+processes. Avoiding the cost means identifying a fast member, which a few
+calls suffice to do, rather than merely not redrawing.
 
 This is a hazard some hardware exhibits rather than a property of the design.
 The same measurement on an RTX 4090 spans 0.22 percent across 14
