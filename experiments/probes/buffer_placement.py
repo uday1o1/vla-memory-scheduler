@@ -67,8 +67,16 @@ def buffer_facts(pipe) -> list[dict]:
                     continue
                 seen.add(id(b))
                 ptr = b.data_ptr()
+                st = getattr(h, "prefetch_stream", None)
                 facts.append({
                     "hook": attr,
+                    # The stream is what carries the cost, so record which one
+                    # this rebuild got. If the slow state follows particular
+                    # stream identities, a pool is cycling and some slots are
+                    # slower; if identities are unique every time, it does not.
+                    "stream_id": getattr(st, "cuda_stream", None),
+                    "stream_hex": hex(getattr(st, "cuda_stream", 0) or 0),
+                    "stream_priority": getattr(st, "priority", None),
                     "ptr": ptr,
                     "ptr_hex": hex(ptr),
                     "bytes": b.numel() * b.element_size(),
@@ -138,8 +146,8 @@ def main() -> None:
 
     results = {"meta": run_metadata(args), "k": args.k, "rebuilds": []}
     print(f"\nK={args.k}, residency never changes, only the pipeline is rebuilt\n")
-    print(f"{'#':<4}{'median s':<12}{'buffers':<10}{'first ptr':<20}"
-          f"{'align KB':<11}{'offset in 2MB'}")
+    print(f"{'#':<4}{'median s':<12}{'buffers':<10}{'stream':<20}"
+          f"{'priority':<10}{'first buf ptr'}")
 
     carried = None
     for r in range(args.rebuilds):
@@ -187,8 +195,8 @@ def main() -> None:
         })
         f0 = facts[0] if facts else {}
         print(f"{r + 1:<4}{med:<12.3f}{len(facts):<10}"
-              f"{f0.get('ptr_hex', 'n/a'):<20}{f0.get('align_kb', 0):<11}"
-              f"{f0.get('offset_in_2mb', 0)}")
+              f"{f0.get('stream_hex', 'n/a'):<20}"
+              f"{str(f0.get('stream_priority')):<10}{f0.get('ptr_hex', 'n/a')}")
         pipe.remove(); del pipe; gc.collect()
 
     args.output.write_text(json.dumps(results, indent=2))
@@ -213,15 +221,19 @@ def main() -> None:
             print(f"         offset in 2MB     {sorted(set(offs))[:6]}")
         summarize(fast, "fast")
         summarize(slow, "slow")
-        fa = {b["align_kb"] for e in fast for b in e["buffers"]}
-        sa = {b["align_kb"] for e in slow for b in e["buffers"]}
+        fs = {b.get("stream_id") for e in fast for b in e["buffers"]}
+        ss = {b.get("stream_id") for e in slow for b in e["buffers"]}
         print()
-        if fa & sa:
-            print("  The two groups share buffer alignments, so alignment alone does")
-            print("  not decide the outcome.")
+        print(f"  distinct streams seen  fast {len(fs)}  slow {len(ss)}  shared {len(fs & ss)}")
+        if fs & ss:
+            print("  The same stream identity appears in both groups, so which stream")
+            print("  a rebuild gets does not decide the outcome.")
+        elif len(fs | ss) == len(fast) + len(slow):
+            print("  Every rebuild received a distinct stream, so there is no pool")
+            print("  being cycled and identity carries no information here.")
         else:
-            print("  The groups do not share a buffer alignment, so where the staging")
-            print("  buffers land is what separates a fast rebuild from a slow one.")
+            print("  Fast and slow rebuilds drew disjoint sets of streams, so which")
+            print("  stream a rebuild receives is what separates them.")
     print(f"\nSaved -> {args.output}")
 
 
