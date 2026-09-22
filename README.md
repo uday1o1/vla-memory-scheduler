@@ -91,6 +91,26 @@ it does not establish that smaller or more frequent adjustments repay
 themselves, and the rebuild cost described below is a reason to think frequent
 ones may not.
 
+**What the placement rule is worth end to end.** A workload alternating between
+K=24 and K=16 over six changes with four inference calls between each, on an
+RTX 4090, rebuilding the pipeline at every change as the upstream design
+requires:
+
+| placement | layers moved | transition | inference | total |
+|---|---|---|---|---|
+| nested | 72 | 15.44s | 185.86s | **201.30s** |
+| upstream | 120 | 32.13s | 185.77s | **217.91s** |
+
+Identical work, 7.7 percent less wall time, from moving 72 layers instead of
+120 and spending 15.44 seconds on transitions instead of 32.13.
+
+The end-to-end gain is far smaller than the 21.84x seen on a single transition,
+and the reason is worth stating: inference dominates this workload at about
+186 seconds against 15 to 32 seconds of transitions, so even halving the
+transition cost moves the total by single digits. The benefit scales with how
+often residency moves, and a policy that changes rarely gains little from any
+improvement to the cost of changing.
+
 **A cost of rebuilding the streaming pipeline, and how to remove it.** On the
 RTX 3090, reconstructing the pipeline leaves inference about 13 percent slower
 for as long as that pipeline lives, on roughly one reconstruction in four,
