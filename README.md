@@ -120,11 +120,12 @@ one never does.
 
 Eight causes were excluded, including clock ramp, allocator fragmentation and
 staging buffer placement, the last because fast and slow rebuilds hold
-identical buffer addresses. What remains is the CUDA events and prefetch
-stream each reconstruction creates. Sharing those across rebuilds, through an
-entry point the upstream hook already provides, removes the effect: 14
-consecutive rebuilds span 1.06 percent against 12.4 to 13.5 percent without
-it.
+identical buffer addresses. Carrying over one object at a time isolates the
+cause: reusing only the prefetch stream gives a spread of 0.31 percent with no
+slow rebuild in 14, while reusing only the CUDA events gives 12.06 percent
+with four, which is the unfixed behaviour. The fix is therefore a single
+object, available in the existing code: create the prefetch stream once and
+share it across residency changes.
 
 This is a hazard some hardware exhibits rather than a property of the design.
 The same measurement on an RTX 4090 spans 0.22 percent across 14
