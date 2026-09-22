@@ -161,11 +161,20 @@ def main() -> None:
     results = {"meta": run_metadata(args), "arms": {}}
     print(f"\nAlternating K={args.k_a} and K={args.k_b}, {args.phases} changes, "
           f"{args.calls_per_phase} calls each\n")
+
+    # A discarded arm first. Whichever arm runs first pays one-time costs the
+    # others do not: layers reach the device from a cold start and host memory
+    # is pinned for the first time. Measured first, that inflates its
+    # transition total by roughly three times and reads as a property of
+    # whatever that arm was testing.
+    print("Discarded warm-up arm, so no measured arm is the first to run...")
+    arm(nested_placement, False)
+    print("  warm-up done\n")
     print(f"{'placement':<11}{'stream':<10}{'moves':<8}{'transition s':<15}"
           f"{'inference s':<14}{'total s':<11}{'median call'}")
 
     for pname, rule in (("nested", nested_placement), ("upstream", interleaved_placement)):
-        for reuse in (True, False):
+        for reuse in (False, True):
             r = arm(rule, reuse)
             results["arms"][f"{pname}_{'reuse' if reuse else 'rebuild'}"] = r
             print(f"{pname:<11}{'reuse' if reuse else 'rebuild':<10}{r['moves']:<8}"
