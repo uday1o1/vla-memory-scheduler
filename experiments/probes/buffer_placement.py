@@ -85,6 +85,11 @@ def main() -> None:
     p.add_argument("--k", type=int, default=16)
     p.add_argument("--rebuilds", type=int, default=14)
     p.add_argument("--per-block", type=int, default=5)
+    p.add_argument("--reuse", choices=["none", "all", "stream", "events", "bufs"],
+                   default=None,
+                   help="which of the objects a reconstruction creates to carry "
+                        "over from the previous pipeline, to find which one "
+                        "holds the cost")
     p.add_argument("--reuse-stream", action="store_true",
                    help="hand each rebuilt pipeline the previous one's staging "
                         "buffers, events and prefetch stream, so reconstruction "
@@ -139,14 +144,22 @@ def main() -> None:
     carried = None
     for r in range(args.rebuilds):
         pipe = build()
-        if args.reuse_stream and carried is not None:
+        mode = args.reuse or ("all" if args.reuse_stream else "none")
+        if mode != "none" and carried is not None:
             # set_bufs exists upstream to share these across modules. Used here
             # to share them across rebuilds instead.
             for attr, saved in carried.items():
                 h = getattr(pipe, attr, None)
-                if h is not None and saved["bufs"]:
-                    h.set_bufs(saved["bufs"], saved["events"], saved["stream"])
-        if args.reuse_stream and carried is None:
+                if h is None or not saved["bufs"]:
+                    continue
+                # set_bufs leaves any argument it is not given alone, so each
+                # mode carries over exactly one kind of object.
+                h.set_bufs(
+                    saved["bufs"] if mode in ("all", "bufs") else list(h.gpu_bufs),
+                    saved["events"] if mode in ("all", "events") else None,
+                    saved["stream"] if mode in ("all", "stream") else None,
+                )
+        if mode != "none" and carried is None:
             carried = {}
             for attr in ("vlm_hook", "vis_hook", "exp_hook"):
                 h = getattr(pipe, attr, None)
