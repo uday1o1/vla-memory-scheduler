@@ -1,0 +1,596 @@
+{
+  "meta": {
+    "utc": "2026-09-22T11:03:46+00:00",
+    "argv": [
+      "experiments/probes/buffer_placement.py",
+      "--k",
+      "16",
+      "--rebuilds",
+      "16",
+      "--per-block",
+      "5",
+      "--reuse",
+      "none",
+      "--output",
+      "/root/results/stream_identity_3090.json"
+    ],
+    "args": {
+      "k": "16",
+      "rebuilds": "16",
+      "per_block": "5",
+      "reuse": "none",
+      "reuse_stream": "False",
+      "output": "/root/results/stream_identity_3090.json"
+    },
+    "torch": "2.8.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA GeForce RTX 3090",
+    "gpu_total_gb": 23.56,
+    "driver_version": "580.178.04",
+    "pcie_link_gen_max": "3",
+    "pcie_link_width_max": "16"
+  },
+  "k": 16,
+  "rebuilds": [
+    {
+      "rebuild": 1,
+      "median": 16.73238662800577,
+      "times": [
+        16.71528598299483,
+        16.725521733009373,
+        18.029177527991123,
+        16.743047853000462,
+        16.73238662800577
+      ],
+      "buffers": [
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814463499056,
+          "stream_hex": "0x563bb66a9b30",
+          "stream_priority": 0,
+          "ptr": 22045999104,
+          "ptr_hex": "0x5220b4000",
+          "bytes": 385892864,
+          "align_kb": 16,
+          "offset_in_2mb": 737280
+        },
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814463499056,
+          "stream_hex": "0x563bb66a9b30",
+          "stream_priority": 0,
+          "ptr": 22431891968,
+          "ptr_hex": "0x5390b8200",
+          "bytes": 385892864,
+          "align_kb": 0,
+          "offset_in_2mb": 754176
+        }
+      ]
+    },
+    {
+      "rebuild": 2,
+      "median": 16.722304139999324,
+      "times": [
+        16.72128163400339,
+        16.695571449992713,
+        16.723896094001248,
+        16.722304139999324,
+        16.722847298005945
+      ],
+      "buffers": [
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814449807472,
+          "stream_hex": "0x563bb599b070",
+          "stream_priority": 0,
+          "ptr": 22045999104,
+          "ptr_hex": "0x5220b4000",
+          "bytes": 385892864,
+          "align_kb": 16,
+          "offset_in_2mb": 737280
+        },
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814449807472,
+          "stream_hex": "0x563bb599b070",
+          "stream_priority": 0,
+          "ptr": 22431891968,
+          "ptr_hex": "0x5390b8200",
+          "bytes": 385892864,
+          "align_kb": 0,
+          "offset_in_2mb": 754176
+        }
+      ]
+    },
+    {
+      "rebuild": 3,
+      "median": 18.872799791002763,
+      "times": [
+        18.761637359013548,
+        18.850818292994518,
+        18.886428377008997,
+        18.872799791002763,
+        18.87416466900322
+      ],
+      "buffers": [
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814451551488,
+          "stream_hex": "0x563bb5b44d00",
+          "stream_priority": 0,
+          "ptr": 22045999104,
+          "ptr_hex": "0x5220b4000",
+          "bytes": 385892864,
+          "align_kb": 16,
+          "offset_in_2mb": 737280
+        },
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814451551488,
+          "stream_hex": "0x563bb5b44d00",
+          "stream_priority": 0,
+          "ptr": 22431891968,
+          "ptr_hex": "0x5390b8200",
+          "bytes": 385892864,
+          "align_kb": 0,
+          "offset_in_2mb": 754176
+        }
+      ]
+    },
+    {
+      "rebuild": 4,
+      "median": 16.75643038698763,
+      "times": [
+        16.771117925003637,
+        16.760154376999708,
+        16.752881735999836,
+        16.74409028700029,
+        16.75643038698763
+      ],
+      "buffers": [
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814629121728,
+          "stream_hex": "0x563bc049cec0",
+          "stream_priority": 0,
+          "ptr": 22045999104,
+          "ptr_hex": "0x5220b4000",
+          "bytes": 385892864,
+          "align_kb": 16,
+          "offset_in_2mb": 737280
+        },
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814629121728,
+          "stream_hex": "0x563bc049cec0",
+          "stream_priority": 0,
+          "ptr": 22431891968,
+          "ptr_hex": "0x5390b8200",
+          "bytes": 385892864,
+          "align_kb": 0,
+          "offset_in_2mb": 754176
+        }
+      ]
+    },
+    {
+      "rebuild": 5,
+      "median": 18.869836608995683,
+      "times": [
+        18.818922243997804,
+        18.821756831006496,
+        20.11991624700022,
+        19.202540254991618,
+        18.869836608995683
+      ],
+      "buffers": [
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814449942576,
+          "stream_hex": "0x563bb59bc030",
+          "stream_priority": 0,
+          "ptr": 22045999104,
+          "ptr_hex": "0x5220b4000",
+          "bytes": 385892864,
+          "align_kb": 16,
+          "offset_in_2mb": 737280
+        },
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814449942576,
+          "stream_hex": "0x563bb59bc030",
+          "stream_priority": 0,
+          "ptr": 22431891968,
+          "ptr_hex": "0x5390b8200",
+          "bytes": 385892864,
+          "align_kb": 0,
+          "offset_in_2mb": 754176
+        }
+      ]
+    },
+    {
+      "rebuild": 6,
+      "median": 16.746968806008226,
+      "times": [
+        16.766565864993026,
+        16.746776854008203,
+        16.75026802100183,
+        16.746968806008226,
+        16.736411492995103
+      ],
+      "buffers": [
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814452738448,
+          "stream_hex": "0x563bb5c66990",
+          "stream_priority": 0,
+          "ptr": 22045999104,
+          "ptr_hex": "0x5220b4000",
+          "bytes": 385892864,
+          "align_kb": 16,
+          "offset_in_2mb": 737280
+        },
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814452738448,
+          "stream_hex": "0x563bb5c66990",
+          "stream_priority": 0,
+          "ptr": 22431891968,
+          "ptr_hex": "0x5390b8200",
+          "bytes": 385892864,
+          "align_kb": 0,
+          "offset_in_2mb": 754176
+        }
+      ]
+    },
+    {
+      "rebuild": 7,
+      "median": 16.75266246800311,
+      "times": [
+        16.7328090719966,
+        16.785095768995234,
+        16.75266246800311,
+        16.74086734300363,
+        16.758011252997676
+      ],
+      "buffers": [
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814452511616,
+          "stream_hex": "0x563bb5c2f380",
+          "stream_priority": 0,
+          "ptr": 22045999104,
+          "ptr_hex": "0x5220b4000",
+          "bytes": 385892864,
+          "align_kb": 16,
+          "offset_in_2mb": 737280
+        },
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814452511616,
+          "stream_hex": "0x563bb5c2f380",
+          "stream_priority": 0,
+          "ptr": 22431891968,
+          "ptr_hex": "0x5390b8200",
+          "bytes": 385892864,
+          "align_kb": 0,
+          "offset_in_2mb": 754176
+        }
+      ]
+    },
+    {
+      "rebuild": 8,
+      "median": 16.72805838700151,
+      "times": [
+        16.747329638004885,
+        16.77012816700153,
+        16.726891144004185,
+        16.72805838700151,
+        16.723944391997065
+      ],
+      "buffers": [
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814465547840,
+          "stream_hex": "0x563bb689de40",
+          "stream_priority": 0,
+          "ptr": 22045999104,
+          "ptr_hex": "0x5220b4000",
+          "bytes": 385892864,
+          "align_kb": 16,
+          "offset_in_2mb": 737280
+        },
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814465547840,
+          "stream_hex": "0x563bb689de40",
+          "stream_priority": 0,
+          "ptr": 22431891968,
+          "ptr_hex": "0x5390b8200",
+          "bytes": 385892864,
+          "align_kb": 0,
+          "offset_in_2mb": 754176
+        }
+      ]
+    },
+    {
+      "rebuild": 9,
+      "median": 16.748196311993524,
+      "times": [
+        16.76207695499761,
+        16.73668264200387,
+        16.748196311993524,
+        16.71549899999809,
+        18.03356414900918
+      ],
+      "buffers": [
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814463499056,
+          "stream_hex": "0x563bb66a9b30",
+          "stream_priority": 0,
+          "ptr": 22045999104,
+          "ptr_hex": "0x5220b4000",
+          "bytes": 385892864,
+          "align_kb": 16,
+          "offset_in_2mb": 737280
+        },
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814463499056,
+          "stream_hex": "0x563bb66a9b30",
+          "stream_priority": 0,
+          "ptr": 22431891968,
+          "ptr_hex": "0x5390b8200",
+          "bytes": 385892864,
+          "align_kb": 0,
+          "offset_in_2mb": 754176
+        }
+      ]
+    },
+    {
+      "rebuild": 10,
+      "median": 16.743089250987396,
+      "times": [
+        16.73047843000677,
+        16.728238124997006,
+        16.743089250987396,
+        16.746644422004465,
+        16.787579390002065
+      ],
+      "buffers": [
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814449807472,
+          "stream_hex": "0x563bb599b070",
+          "stream_priority": 0,
+          "ptr": 22045999104,
+          "ptr_hex": "0x5220b4000",
+          "bytes": 385892864,
+          "align_kb": 16,
+          "offset_in_2mb": 737280
+        },
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814449807472,
+          "stream_hex": "0x563bb599b070",
+          "stream_priority": 0,
+          "ptr": 22431891968,
+          "ptr_hex": "0x5390b8200",
+          "bytes": 385892864,
+          "align_kb": 0,
+          "offset_in_2mb": 754176
+        }
+      ]
+    },
+    {
+      "rebuild": 11,
+      "median": 18.89479249600845,
+      "times": [
+        18.89479249600845,
+        18.86217156900966,
+        18.662860765994992,
+        18.908985250003752,
+        18.90603511899826
+      ],
+      "buffers": [
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814451551488,
+          "stream_hex": "0x563bb5b44d00",
+          "stream_priority": 0,
+          "ptr": 22045999104,
+          "ptr_hex": "0x5220b4000",
+          "bytes": 385892864,
+          "align_kb": 16,
+          "offset_in_2mb": 737280
+        },
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814451551488,
+          "stream_hex": "0x563bb5b44d00",
+          "stream_priority": 0,
+          "ptr": 22431891968,
+          "ptr_hex": "0x5390b8200",
+          "bytes": 385892864,
+          "align_kb": 0,
+          "offset_in_2mb": 754176
+        }
+      ]
+    },
+    {
+      "rebuild": 12,
+      "median": 16.764519754011417,
+      "times": [
+        16.764519754011417,
+        16.75243652499921,
+        16.779184371989686,
+        16.747596104993136,
+        16.765342746992246
+      ],
+      "buffers": [
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814629121728,
+          "stream_hex": "0x563bc049cec0",
+          "stream_priority": 0,
+          "ptr": 22045999104,
+          "ptr_hex": "0x5220b4000",
+          "bytes": 385892864,
+          "align_kb": 16,
+          "offset_in_2mb": 737280
+        },
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814629121728,
+          "stream_hex": "0x563bc049cec0",
+          "stream_priority": 0,
+          "ptr": 22431891968,
+          "ptr_hex": "0x5390b8200",
+          "bytes": 385892864,
+          "align_kb": 0,
+          "offset_in_2mb": 754176
+        }
+      ]
+    },
+    {
+      "rebuild": 13,
+      "median": 18.832537002992467,
+      "times": [
+        18.821534766000696,
+        18.768015000008745,
+        18.832537002992467,
+        18.964543626992963,
+        20.392900204009493
+      ],
+      "buffers": [
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814449942576,
+          "stream_hex": "0x563bb59bc030",
+          "stream_priority": 0,
+          "ptr": 22045999104,
+          "ptr_hex": "0x5220b4000",
+          "bytes": 385892864,
+          "align_kb": 16,
+          "offset_in_2mb": 737280
+        },
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814449942576,
+          "stream_hex": "0x563bb59bc030",
+          "stream_priority": 0,
+          "ptr": 22431891968,
+          "ptr_hex": "0x5390b8200",
+          "bytes": 385892864,
+          "align_kb": 0,
+          "offset_in_2mb": 754176
+        }
+      ]
+    },
+    {
+      "rebuild": 14,
+      "median": 16.764217767005903,
+      "times": [
+        16.741630909993546,
+        16.753708271004143,
+        16.770669927995186,
+        16.776923290002742,
+        16.764217767005903
+      ],
+      "buffers": [
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814452738448,
+          "stream_hex": "0x563bb5c66990",
+          "stream_priority": 0,
+          "ptr": 22045999104,
+          "ptr_hex": "0x5220b4000",
+          "bytes": 385892864,
+          "align_kb": 16,
+          "offset_in_2mb": 737280
+        },
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814452738448,
+          "stream_hex": "0x563bb5c66990",
+          "stream_priority": 0,
+          "ptr": 22431891968,
+          "ptr_hex": "0x5390b8200",
+          "bytes": 385892864,
+          "align_kb": 0,
+          "offset_in_2mb": 754176
+        }
+      ]
+    },
+    {
+      "rebuild": 15,
+      "median": 16.737397760996828,
+      "times": [
+        16.757068670005538,
+        16.730799599012244,
+        16.737397760996828,
+        16.74645631099702,
+        16.73534678100259
+      ],
+      "buffers": [
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814452511616,
+          "stream_hex": "0x563bb5c2f380",
+          "stream_priority": 0,
+          "ptr": 22045999104,
+          "ptr_hex": "0x5220b4000",
+          "bytes": 385892864,
+          "align_kb": 16,
+          "offset_in_2mb": 737280
+        },
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814452511616,
+          "stream_hex": "0x563bb5c2f380",
+          "stream_priority": 0,
+          "ptr": 22431891968,
+          "ptr_hex": "0x5390b8200",
+          "bytes": 385892864,
+          "align_kb": 0,
+          "offset_in_2mb": 754176
+        }
+      ]
+    },
+    {
+      "rebuild": 16,
+      "median": 16.746541439002613,
+      "times": [
+        16.746541439002613,
+        16.73052524200466,
+        16.771251243990264,
+        16.74308942198695,
+        16.77343337899947
+      ],
+      "buffers": [
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814465547840,
+          "stream_hex": "0x563bb689de40",
+          "stream_priority": 0,
+          "ptr": 22045999104,
+          "ptr_hex": "0x5220b4000",
+          "bytes": 385892864,
+          "align_kb": 16,
+          "offset_in_2mb": 737280
+        },
+        {
+          "hook": "vlm_hook",
+          "stream_id": 94814465547840,
+          "stream_hex": "0x563bb689de40",
+          "stream_priority": 0,
+          "ptr": 22431891968,
+          "ptr_hex": "0x5390b8200",
+          "bytes": 385892864,
+          "align_kb": 0,
+          "offset_in_2mb": 754176
+        }
+      ]
+    }
+  ]
+}

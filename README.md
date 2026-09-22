@@ -123,9 +123,16 @@ staging buffer placement, the last because fast and slow rebuilds hold
 identical buffer addresses. Carrying over one object at a time isolates the
 cause: reusing only the prefetch stream gives a spread of 0.31 percent with no
 slow rebuild in 14, while reusing only the CUDA events gives 12.06 percent
-with four, which is the unfixed behaviour. The fix is therefore a single
-object, available in the existing code: create the prefetch stream once and
-share it across residency changes.
+with four, which is the unfixed behaviour.
+
+Recording which stream each reconstruction receives explains the rest. Sixteen
+reconstructions drew eight distinct streams, each twice. Two ran at 18.83 to
+18.89 seconds on both appearances, six at 16.72 to 16.76 on both, with no
+stream in both groups. The streams come from a pool that is cycled and two of
+its eight members are persistently slower, so a reconstruction is a draw.
+Two in eight is 25 percent, against measured rates of 29, 20 and 29 percent.
+The fix follows: create the prefetch stream once and share it across residency
+changes, so no further draw is made.
 
 This is a hazard some hardware exhibits rather than a property of the design.
 The same measurement on an RTX 4090 spans 0.22 percent across 14
