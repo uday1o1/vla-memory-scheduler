@@ -71,6 +71,8 @@ Eight candidate causes were tested and excluded: GPU clock ramp, since clocks ag
 
 The remedy is therefore available in the existing code and does not require changing how residency is decided: create the stream and events once and share them across residency changes rather than reconstructing them. This matters specifically for adaptive residency, because a static configuration builds its pipeline once and never draws again, while an adaptive one draws on every change.
 
-It does not affect the primary result, because the switching arm selects one profile before its first call and holds it, so neither arm rebuilds while being measured. The RTX 4090 shows no sign of it across 36 order-controlled measurements.
+**How far this generalises, which is not far.** The effect belongs to one machine of the two tested for it. The same measurement on an RTX 4090, fourteen consecutive reconstructions at the same residency level, spans 0.22 percent with every block between 7.888 and 7.905 seconds, against 12.4 to 13.5 percent and four slow reconstructions in fourteen on the RTX 3090. So this is a hazard that some hardware exhibits rather than a property of the design, and what the measurement supports is that reconstruction can cost this much, not that it usually does. The remedy costs nothing where the hazard is absent, which is the case for applying it regardless.
+
+It does not affect the primary result, because the switching arm selects one profile before its first call and holds it, so neither arm rebuilds while being measured.
 
 **Credibility of the foundation.** The codebase is the released artifact of a paper accepted at IEEE RTCSA 2026, an established venue in embedded and real-time systems.

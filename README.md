@@ -106,6 +106,11 @@ entry point the upstream hook already provides, removes the effect: 14
 consecutive rebuilds span 1.06 percent against 12.4 to 13.5 percent without
 it.
 
+This is a hazard some hardware exhibits rather than a property of the design.
+The same measurement on an RTX 4090 spans 0.22 percent across 14
+reconstructions, so the cost can be this large but is not always present. The
+remedy costs nothing where the hazard is absent.
+
 **Compute contention, a negative result.** A duty-cycled saturating workload
 sharing the GPU under CUDA MPS slows every residency level proportionally, by
 0.988x, 1.005x and 1.031x at K=16, 24 and 33. Residency has no lever against
