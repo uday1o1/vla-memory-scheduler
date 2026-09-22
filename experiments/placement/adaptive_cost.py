@@ -19,6 +19,17 @@ for a fixed number of phases, rebuilding the pipeline on every change as the
 upstream design requires, and every call and every transition is timed. The
 comparison is total wall time to complete identical work, which is what a
 deployment pays.
+
+One limit of this design is worth knowing before reading its output. On a
+machine where reconstruction intermittently leaves a slower pipeline, the
+hazard fires on roughly a quarter of reconstructions, each arm performs only a
+handful, and there is one sample per cell. An arm's total then turns largely
+on whether the hazard happened to fire in it, which is enough to reverse the
+ordering of two arms. Run on such a machine, this measures the placement rule,
+whose effect is deterministic, and not the stream setting, whose effect is
+intermittent. The stream setting is measured properly by repeating
+reconstruction many times at one setting, which probes/buffer_placement.py
+does.
 """
 from __future__ import annotations
 
