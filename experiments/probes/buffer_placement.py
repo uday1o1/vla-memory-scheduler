@@ -150,25 +150,32 @@ def main() -> None:
             # to share them across rebuilds instead.
             for attr, saved in carried.items():
                 h = getattr(pipe, attr, None)
-                if h is None or not saved["bufs"]:
+                if h is None:
                     continue
                 # set_bufs leaves any argument it is not given alone, so each
                 # mode carries over exactly one kind of object.
                 h.set_bufs(
-                    saved["bufs"] if mode in ("all", "bufs") else list(h.gpu_bufs),
-                    saved["events"] if mode in ("all", "events") else None,
-                    saved["stream"] if mode in ("all", "stream") else None,
+                    saved["bufs"] if saved["bufs"] else list(h.gpu_bufs),
+                    saved["events"],
+                    saved["stream"],
                 )
         if mode != "none" and carried is None:
+            # Capture only what this mode will carry over. Holding a reference
+            # to an object the mode does not reuse keeps it alive and changes
+            # allocation for every later rebuild, which would be carried into
+            # the comparison as if it were the effect being tested.
             carried = {}
             for attr in ("vlm_hook", "vis_hook", "exp_hook"):
                 h = getattr(pipe, attr, None)
                 if h is None:
                     continue
                 carried[attr] = {
-                    "bufs": list(getattr(h, "gpu_bufs", None) or []),
-                    "events": list(getattr(h, "compute_done", None) or []),
-                    "stream": getattr(h, "prefetch_stream", None),
+                    "bufs": list(getattr(h, "gpu_bufs", None) or [])
+                            if mode in ("all", "bufs") else [],
+                    "events": list(getattr(h, "compute_done", None) or [])
+                              if mode in ("all", "events") else None,
+                    "stream": getattr(h, "prefetch_stream", None)
+                              if mode in ("all", "stream") else None,
                 }
         facts = buffer_facts(pipe)
         for _ in range(3):
