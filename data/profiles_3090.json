@@ -1,0 +1,22 @@
+{
+  "profiles": [
+    {
+      "name": "fast",
+      "k": 33,
+      "latency_s": 6.729633866797667,
+      "footprint_gb": 16.67901611328125
+    },
+    {
+      "name": "mid",
+      "k": 24,
+      "latency_s": 11.997597326594406,
+      "footprint_gb": 13.60479736328125
+    },
+    {
+      "name": "compact",
+      "k": 16,
+      "latency_s": 16.71600270939525,
+      "footprint_gb": 10.78057861328125
+    }
+  ]
+}

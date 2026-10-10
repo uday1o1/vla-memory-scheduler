@@ -28,6 +28,7 @@ from scheduler.paths import R1_CONFIG, RESULTS, bootstrap  # noqa: E402
 bootstrap()
 
 from scheduler.inputs import prepare_inputs_for_clip  # noqa: E402
+from scheduler.provenance import run_metadata  # noqa: E402
 
 from alpamayo_memopt import load_config  # noqa: E402
 from alpamayo_memopt.models import TriHookPipeline, get_adapter  # noqa: E402
@@ -116,6 +117,7 @@ def main():
         torch.cuda.empty_cache()
 
     args.output.write_text(json.dumps({
+        "meta": run_metadata(args),
         "clip_id": args.clip_id,
         "n_vlm_layers": n_vlm,
         "calibration": results,

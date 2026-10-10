@@ -1,0 +1,65 @@
+{
+  "meta": {
+    "utc": "2026-10-10T09:48:52+00:00",
+    "argv": [
+      "experiments/characterize/vram_per_k.py",
+      "--k-values",
+      "33",
+      "28",
+      "24",
+      "20",
+      "16",
+      "12",
+      "8"
+    ],
+    "args": {
+      "k_values": "[33, 28, 24, 20, 16, 12, 8]",
+      "output": "/root/results/vram_per_k.json"
+    },
+    "torch": "2.8.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA GeForce RTX 3090",
+    "gpu_total_gb": 23.58,
+    "driver_version": "565.57.01",
+    "pcie_link_gen_max": "3",
+    "pcie_link_width_max": "16"
+  },
+  "gpu_total_gb": 23.58245849609375,
+  "by_k": {
+    "33": {
+      "peak_alloc_gb": 16.20442819595337,
+      "process_used_gb": 16.67901611328125,
+      "two_fit": false
+    },
+    "28": {
+      "peak_alloc_gb": 14.407472133636475,
+      "process_used_gb": 14.98565673828125,
+      "two_fit": false
+    },
+    "24": {
+      "peak_alloc_gb": 12.969907283782959,
+      "process_used_gb": 13.60479736328125,
+      "two_fit": false
+    },
+    "20": {
+      "peak_alloc_gb": 11.532342433929443,
+      "process_used_gb": 12.16534423828125,
+      "two_fit": false
+    },
+    "16": {
+      "peak_alloc_gb": 10.094777584075928,
+      "process_used_gb": 10.78057861328125,
+      "two_fit": true
+    },
+    "12": {
+      "peak_alloc_gb": 8.657212734222412,
+      "process_used_gb": 9.33917236328125,
+      "two_fit": true
+    },
+    "8": {
+      "peak_alloc_gb": 7.2196478843688965,
+      "process_used_gb": 7.79815673828125,
+      "two_fit": true
+    }
+  }
+}

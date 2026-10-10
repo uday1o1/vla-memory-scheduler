@@ -37,6 +37,9 @@ def main() -> None:
     p.add_argument("--vram", type=Path, default=RESULTS / "vram_per_k.json")
     p.add_argument("--output", type=Path, default=RESULTS / "profiles.json")
     p.add_argument("--names", nargs=3, default=["fast", "mid", "compact"])
+    p.add_argument("--k", type=int, nargs=3, default=None,
+                   help="use exactly these residency levels rather than choosing, "
+                        "so the profile set matches an earlier machine's")
     args = p.parse_args()
 
     for f in (args.calibration, args.vram):
@@ -63,6 +66,11 @@ def main() -> None:
     ]
     levels.sort(key=lambda e: e["latency_s"])
 
+    if args.k:
+        missing = [k for k in args.k if str(k) not in shared]
+        if missing:
+            raise SystemExit(f"--k levels {missing} were not measured by both runs")
+        levels = [e for e in levels if e["k"] in args.k]
     # Fastest, nearest the middle by latency, and slowest.
     mid_target = (levels[0]["latency_s"] + levels[-1]["latency_s"]) / 2
     middle = min(levels[1:-1], key=lambda e: abs(e["latency_s"] - mid_target)) \

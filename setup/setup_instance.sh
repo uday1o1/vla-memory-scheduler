@@ -57,6 +57,19 @@ else
     echo "  skipped: needs apt-get and root. Ensure git, wget and pip are present."
 fi
 
+# Some images ship CUDA forward-compatibility libraries and register them ahead
+# of the host driver. Forward compatibility is unsupported on GeForce cards, so
+# CUDA then fails to initialise with error 804 even though nvidia-smi works.
+# Unregister them on GeForce cards.
+if [ "$(id -u)" = "0" ] && ls /etc/ld.so.conf.d/*compat* >/dev/null 2>&1 \
+   && nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | grep -q GeForce; then
+    for f in /etc/ld.so.conf.d/*compat*; do
+        grep -q "cuda.*compat" "$f" && mv "$f" "$f.disabled"
+    done
+    ldconfig
+    echo "  CUDA forward-compatibility libraries unregistered (unsupported on this GPU)"
+fi
+
 # Activate a virtualenv only if one is present and none is already active.
 # Rented images often ship one; a local machine usually does not.
 if [ -z "${VIRTUAL_ENV:-}" ] && [ -n "${VENV:-}" ] && [ -f "$VENV/bin/activate" ]; then
