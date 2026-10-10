@@ -16,7 +16,10 @@ for every pair, so nested families achieve the lower bound on every
 transition and non-nested families strictly exceed it on at least one.
 
 This is combinatorial: it holds for any model, any layer size, any GPU. The
-hardware only determines the seconds per move, not the move count.
+hardware only determines the seconds per move, not the move count. Nesting is
+the inclusion property of stack algorithms (Mattson et al., IBM Systems
+Journal, 1970) applied to resident layers, and the bound is elementary; what
+this script shows is that the upstream rule violates it, and by how much.
 
 The ablation asks a separate question: is the benefit from nesting alone, or
 does our specific bisection order matter? Comparing against a deliberately
@@ -35,7 +38,9 @@ sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 from scheduler.paths import bootstrap  # noqa: E402
 
 bootstrap()
-from scheduler.placement import nested_placement, max_gap, priority_order  # noqa: E402
+from scheduler.placement import (  # noqa: E402
+    max_gap, nested_placement, priority_order, upstream_placement,
+)
 
 TOTAL = 36
 
@@ -73,35 +78,21 @@ def main():
     print("=== Move-optimality: does each rule achieve the |dK| lower bound? ===")
     verify_lower_bound(nested_placement, "nested")
     verify_lower_bound(sequential_placement, "sequential")
-    # Only an absent upstream package may skip the comparison; any other
-    # failure is a bug here and must surface rather than be reported as a
-    # missing dependency.
-    try:
-        from alpamayo_memopt.profiler import interleaved_placement
-    except ModuleNotFoundError:
-        have_upstream = False
-        print("  upstream       (unavailable here; run on the GPU host)")
-    else:
-        verify_lower_bound(interleaved_placement, "upstream")
-        have_upstream = True
+    verify_lower_bound(upstream_placement, "upstream")
 
     print("\n=== Ablation: is the benefit from nesting alone, or from the order? ===")
     print("  Both nested and sequential are nested, so both are move-optimal.")
     print("  Spread quality separates them (max consecutive non-resident run):")
-    header = f"  {'K':<6}{'nested':<12}{'sequential':<14}"
-    if have_upstream:
-        header += "upstream"
-    print(header)
+    print(f"  {'K':<6}{'nested':<12}{'sequential':<14}upstream")
     for k in (8, 16, 20, 24, 30, 33):
         row = f"  {k:<6}{max_gap(nested_placement(k), TOTAL):<12}" \
-              f"{max_gap(sequential_placement(k), TOTAL):<14}"
-        if have_upstream:
-            row += str(max_gap(interleaved_placement(k, TOTAL), TOTAL))
+              f"{max_gap(sequential_placement(k), TOTAL):<14}" \
+              f"{max_gap(upstream_placement(k, TOTAL), TOTAL)}"
         print(row)
 
-    print("\n  If sequential shows worse spread but equal move counts, then nesting")
-    print("  and spread are independent properties and the contribution is a rule")
-    print("  that achieves both, not merely nesting.")
+    print("\n  Sequential has equal move counts and far worse spread, so nesting and")
+    print("  spread are independent properties. Any nested order is move-optimal;")
+    print("  experiments/placement/baselines.py compares nested orders on spread.")
 
     print(f"\n=== Priority order (first 12) ===")
     print(f"  {list(priority_order(TOTAL))[:12]}")

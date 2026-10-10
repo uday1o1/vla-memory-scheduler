@@ -59,6 +59,19 @@ def nested_placement(k: int, total: int = 36) -> list[int]:
     return sorted(priority_order(total)[:k])
 
 
+def upstream_placement(k: int, total: int = 36) -> list[int]:
+    """The upstream rule, `interleaved_placement` from aveeslab/oom-free-alpamayo
+    (MIT licensed, paper Eq. 8), reproduced so that every comparison against it
+    runs without the upstream package or a GPU. The self-check below confirms
+    it matches the original at every K whenever the original is importable."""
+    if k <= 0:
+        return []
+    n = total - 1  # the final layer is never resident
+    if k >= n:
+        return list(range(n))
+    return sorted(set(int(i * n / k) for i in range(k)))
+
+
 def max_gap(indices: list[int], total: int = 36) -> int:
     """Largest run of consecutive non-resident layers. Lower is better spread."""
     if not indices:
@@ -94,10 +107,9 @@ def _selftest():
         assert len(idx) == k, f"expected {k} layers, got {len(idx)}"
     print("  layer 0 always resident, final layer never resident, exact count: ok")
 
-    print("\n=== Spread quality (max consecutive non-resident run; lower is better) ===")
-    # Only a genuinely absent upstream package may skip this comparison. Any
-    # other failure is a bug here and must not masquerade as a missing
-    # dependency, which would let the self-check pass having compared nothing.
+    print("\n=== The reproduced upstream rule against the original ===")
+    # Only a genuinely absent upstream package may skip this check. Any other
+    # failure is a bug here and must not masquerade as a missing dependency.
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -105,40 +117,39 @@ def _selftest():
     bootstrap()
     try:
         from alpamayo_memopt.profiler import interleaved_placement
-        have_upstream = True
     except ModuleNotFoundError:
-        have_upstream = False
-
-    if have_upstream:
-        # Swept across the whole range, not a sample. Spread parity holds at
-        # most residency levels but not all, and a curated subset of K hides
-        # exactly the levels where it does not.
-        print(f"  {'K':<6}{'nested':<10}{'upstream':<10}{'moves nested':<15}{'moves upstream'}")
-        worse, better = [], []
-        prev_n = prev_u = None
-        for k in range(2, total - 2):
-            n = nested_placement(k, total)
-            u = interleaved_placement(k, total)
-            gn, gu = max_gap(n, total), max_gap(u, total)
-            if gn > gu:
-                worse.append(k)
-            elif gn < gu:
-                better.append(k)
-            mn = mu = "-"
-            if prev_n is not None:
-                sn, su = set(n), set(u)
-                mn = len(set(prev_n) - sn) + len(sn - set(prev_n))
-                mu = len(set(prev_u) - su) + len(su - set(prev_u))
-            print(f"  {k:<6}{gn:<10}{gu:<10}{str(mn):<15}{mu}")
-            prev_n, prev_u = n, u
-        print(f"\n  spread equal at all K except worse at {worse}, better at {better}")
-        print("  Move-optimality is a proven property at every K; spread parity")
-        print("  is not, and holds only from K=19 upward without exception.")
+        print("  original not installed here; the reproduction is used as is")
     else:
-        print(f"  {'K':<6}{'nested max_gap'}")
-        for k in (8, 16, 20, 24, 30, 33):
-            print(f"  {k:<6}{max_gap(nested_placement(k, total), total)}")
-        print("  (upstream rule unavailable here; run on the GPU host to compare)")
+        mismatch = [k for k in range(0, total + 1)
+                    if upstream_placement(k, total) != interleaved_placement(k, total)]
+        assert not mismatch, f"reproduced upstream rule differs at K={mismatch}"
+        print("  identical at every K")
+
+    print("\n=== Spread quality (max consecutive non-resident run; lower is better) ===")
+    # Swept across the whole range, not a sample. Spread parity holds at most
+    # residency levels but not all, and a curated subset of K hides exactly
+    # the levels where it does not.
+    print(f"  {'K':<6}{'nested':<10}{'upstream':<10}{'moves nested':<15}{'moves upstream'}")
+    worse, better = [], []
+    prev_n = prev_u = None
+    for k in range(2, total - 2):
+        n = nested_placement(k, total)
+        u = upstream_placement(k, total)
+        gn, gu = max_gap(n, total), max_gap(u, total)
+        if gn > gu:
+            worse.append(k)
+        elif gn < gu:
+            better.append(k)
+        mn = mu = "-"
+        if prev_n is not None:
+            sn, su = set(n), set(u)
+            mn = len(set(prev_n) - sn) + len(sn - set(prev_n))
+            mu = len(set(prev_u) - su) + len(su - set(prev_u))
+        print(f"  {k:<6}{gn:<10}{gu:<10}{str(mn):<15}{mu}")
+        prev_n, prev_u = n, u
+    print(f"\n  spread equal at all K except worse at {worse}, better at {better}")
+    print("  Move-optimality is a proven property at every K; spread parity")
+    print("  is not, and holds only from K=19 upward without exception.")
 
     print("\nAll self-checks passed.")
 
