@@ -8,7 +8,9 @@ residency each arm chose, and each call's latency with the residency change
 charged to it, against the deadline. The three arms shown are the deployed
 system (evenly spaced placement, copy demotion), an Oneiros-style controller
 (evenly spaced placement, host copy kept) and nested placement with a host
-copy kept.
+copy kept. The bar chart counts misses caused by a residency change for every
+switching arm, and the sensitivity figure scores the four runtime arms against
+deadlines other than the one fixed before the run.
 """
 from __future__ import annotations
 
@@ -28,6 +30,13 @@ SHOWN = {
     ("runtime", "upstream", "copy"): ("Deployed: evenly spaced, copy back", "#b5452f"),
     ("runtime", "upstream", "clean"): ("Oneiros-style: evenly spaced, host copy", "#d9a520"),
     ("runtime", "nested", "clean"): ("Nested, host copy", "#2f6db5"),
+}
+
+RUNTIME_ARMS = {
+    ("runtime", "upstream", "copy"): ("evenly spaced, copy back (deployed)", "#b5452f"),
+    ("runtime", "nested", "copy"): ("nested, copy back", "#e08a6e"),
+    ("runtime", "upstream", "clean"): ("evenly spaced, host copy (Oneiros-style)", "#d9a520"),
+    ("runtime", "nested", "clean"): ("nested, host copy", "#2f6db5"),
 }
 
 
@@ -61,25 +70,71 @@ def timeline(runs, phase_calls, rep, ax_top, ax_bot, upto=None):
     ax_bot.legend(fontsize=7, loc="upper right")
 
 
+# The two-by-two first, deployed system to both corrections, then the policy
+# that changes less often.
+BAR_ORDER = [
+    (("runtime", "upstream", "copy"), "deployed\nevenly spaced\ncopy back"),
+    (("runtime", "nested", "copy"), "nested\ncopy back"),
+    (("runtime", "upstream", "clean"), "Oneiros-style\nevenly spaced\nhost copy"),
+    (("runtime", "nested", "clean"), "nested\nhost copy"),
+    (("deadline", "upstream", "copy"), "deadline policy\nevenly spaced\ncopy back"),
+    (("deadline", "nested", "copy"), "deadline policy\nnested\ncopy back"),
+]
+
+
 def bars(runs, ax):
+    """Mean per arm, with every repetition drawn as a point over its bar."""
     acc = defaultdict(list)
     for r in runs:
         key, L = arm(r)
-        if key[0] in ("runtime", "deadline"):
-            d = r["deadline_s"]
-            acc[(key, L)].append(sum(1 for c in r["calls"] if c["inference_s"] is not None
-                                     and c["inference_s"] <= d < c["total_s"]))
-    keys = sorted({k for k, _ in acc})
-    churns = sorted({L for _, L in acc}, reverse=True)
+        d = r["deadline_s"]
+        acc[(key, L)].append(sum(1 for c in r["calls"] if c["inference_s"] is not None
+                                 and c["inference_s"] <= d < c["total_s"]))
+    keys = [(k, lab) for k, lab in BAR_ORDER if any(kk == k for kk, _ in acc)]
+    churns = sorted({L for k, L in acc if k[0] in ("runtime", "deadline")}, reverse=True)
     w = 0.8 / len(churns)
     for j, L in enumerate(churns):
-        ys = [statistics.mean(acc[(k, L)]) if acc.get((k, L)) else 0 for k in keys]
-        ax.bar([i + j * w for i in range(len(keys))], ys, width=w,
+        xs = [i + j * w for i in range(len(keys))]
+        ys = [statistics.mean(acc[(k, L)]) if acc.get((k, L)) else 0 for k, _ in keys]
+        ax.bar(xs, ys, width=w, color=["#9bb8d9", "#2f6db5"][j % 2],
                label=f"{L} calls per phase")
+        for x, (k, _) in zip(xs, keys):
+            pts = acc.get((k, L), [])
+            jit = [x + w * 0.3 * ((i % 5) - 2) / 2 for i in range(len(pts))]
+            ax.scatter(jit, pts, s=8, color="#222", zorder=3)
     ax.set_xticks([i + w * (len(churns) - 1) / 2 for i in range(len(keys))])
-    ax.set_xticklabels([f"{p}\n{pl}\n{de}" for p, pl, de in keys], fontsize=7)
-    ax.set_ylabel("misses caused by a residency change\n(mean per 48-call run)")
+    ax.set_xticklabels([lab for _, lab in keys], fontsize=7)
+    ax.set_ylabel("misses caused by a residency change\n(per 48-call run)")
     ax.legend(fontsize=8)
+
+
+def sensitivity(runs, axes):
+    """Deadline misses of the runtime arms against the deadline.
+
+    The runtime policy never consults the deadline, so its recorded calls can
+    be scored against any deadline after the fact. All four arms choose the
+    same profiles, so the gaps between them are what residency changes cost.
+    Total misses are plotted rather than those caused by a change, because a
+    deadline tight enough for inference alone to miss would otherwise make the
+    count fall as the deadline tightens. The dotted line is the deadline fixed
+    before the run.
+    """
+    mid = runs[0]["deadline_s"] / 1.15
+    mults = [1.0 + i * 0.005 for i in range(71)]
+    churns = sorted({arm(r)[1] for r in runs if arm(r)[0][0] == "runtime"}, reverse=True)
+    for ax, L in zip(axes, churns):
+        for key, (label, color) in RUNTIME_ARMS.items():
+            rs = [r for r in runs if arm(r) == (key, L)]
+            if not rs:
+                continue
+            ys = [statistics.mean(sum(c["total_s"] is None or c["total_s"] > mid * m
+                                      for c in r["calls"]) for r in rs) for m in mults]
+            ax.plot(mults, ys, color=color, lw=1.5, label=label)
+        ax.axvline(1.15, color="#222", ls=":", lw=1)
+        ax.set_title(f"{L} calls per phase", fontsize=9)
+        ax.set_xlabel("deadline, multiple of the mid profile's latency")
+    axes[0].set_ylabel("deadline misses\n(mean per 48-call run)")
+    axes[-1].legend(fontsize=7, loc="upper right")
 
 
 def main() -> None:
@@ -103,6 +158,12 @@ def main() -> None:
     bars(runs, ax)
     fig.tight_layout()
     fig.savefig(args.outdir / "trace_transition_misses.png", dpi=160)
+
+    n_l = len({arm(r)[1] for r in runs if arm(r)[0][0] == "runtime"})
+    fig, axes = plt.subplots(1, n_l, figsize=(4.5 * n_l, 3.6), sharey=True, squeeze=False)
+    sensitivity(runs, list(axes[0]))
+    fig.tight_layout()
+    fig.savefig(args.outdir / "trace_deadline_sensitivity.png", dpi=160)
     print(f"Saved figures to {args.outdir}")
 
     if args.animate:

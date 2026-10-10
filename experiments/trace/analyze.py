@@ -3,7 +3,9 @@
 Two measures, because the policies trade one against the other: the driving
 model's deadline-miss rate, with residency changes charged to the call after
 them, and how often the tenant is refused its memory. A policy is better only
-if it is no worse on either.
+if it is no worse on either. Mean call latency and the share of calls on which
+both parties were served are reported alongside, since a policy can trade one
+measure for the other without changing their sum.
 
 Misses are split by cause. A call whose inference alone would have met the
 deadline but whose total did not was missed because of the residency change
@@ -51,6 +53,8 @@ def per_run(r) -> dict:
         "refused_rate": sum(not c["tenant_admitted"] for c in calls) / max(1, len(calls)),
         "tenant_wait_s": statistics.median([c["tenant_wait_s"] for c in rose]) if rose else None,
         "oom": sum(c["error"] is not None for c in calls),
+        "mean_latency_s": statistics.mean([c["total_s"] for c in inferred]) if inferred else None,
+        "both_served": sum(c["met_deadline"] and c["tenant_admitted"] for c in calls) / n,
         "median_inference_s": statistics.median([c["inference_s"] for c in inferred])
                               if inferred else None,
     }
@@ -94,7 +98,7 @@ def main() -> None:
 
     print(f"{'policy':<15}{'placement':<10}{'demotion':<9}{'L':<4}{'n':<4}{'miss':<8}"
           f"{'from transitions':<18}{'transition s':<14}{'refused':<9}{'tenant wait s':<15}"
-          f"{'OOM'}")
+          f"{'mean s':<8}{'both':<7}{'OOM'}")
     for arm in sorted(rows):
         m = list(rows[arm].values())
         mean = lambda k: statistics.mean(x[k] for x in m)  # noqa: E731
@@ -103,6 +107,7 @@ def main() -> None:
               f"{mean('miss_rate'):<8.3f}{mean('transition_misses'):<18.2f}"
               f"{mean('transition_s'):<14.2f}{mean('refused_rate'):<9.3f}"
               f"{(statistics.median(waits) if waits else float('nan')):<15.2f}"
+              f"{mean('mean_latency_s'):<8.2f}{mean('both_served'):<7.3f}"
               f"{sum(x['oom'] for x in m)}")
 
     churns = sorted({a[3] for a in rows})
@@ -121,6 +126,10 @@ def main() -> None:
                 compare(f"miss rate, runtime nested clean vs {s}", rows, "miss_rate", best, stat)
                 compare(f"tenant refused, runtime nested clean vs {s}", rows,
                         "refused_rate", best, stat)
+                compare(f"mean latency, runtime nested clean vs {s}", rows,
+                        "mean_latency_s", best, stat)
+                compare(f"both served, runtime nested clean vs {s}", rows,
+                        "both_served", best, stat)
         print("Ablation of the two fixes, misses caused by transitions:")
         rt = lambda pl, de: ("runtime", pl, de, L)  # noqa: E731
         compare("nested vs upstream placement, copy demotion", rows,
@@ -146,6 +155,29 @@ def main() -> None:
                 "transition_s", rt("nested", "clean"), rt("nested", "copy"))
         compare("nested vs upstream placement, clean demotion", rows,
                 "transition_s", rt("nested", "clean"), rt("upstream", "clean"))
+
+    # Deadline sensitivity. The runtime policy never consults the deadline, so
+    # its recorded calls can be scored against any deadline after the fact. The
+    # deadline fixed before the run (mid profile x 1.15) stays the primary
+    # result; this shows how far the ablation's conclusion depends on it. All
+    # four arms choose the same profiles, so the gaps between them are what
+    # residency changes cost.
+    mid = runs[0]["deadline_s"] / 1.15
+    mults = (1.05, 1.10, 1.15, 1.20, 1.30)
+    misses = lambda r, d: sum(c["total_s"] is None or c["total_s"] > d for c in r["calls"])  # noqa: E731
+    print("\n=== Deadline sensitivity, runtime arms, misses per run ===")
+    print(f"{'placement':<10}{'demotion':<9}{'L':<4}" + "".join(f"x{m:<7.2f}" for m in mults))
+    for arm in sorted(a for a in rows if a[0] == "runtime"):
+        rs = [r for r in runs if arm_name(r) == arm]
+        cells = [statistics.mean(misses(r, mid * m) for r in rs) for m in mults]
+        print(f"{arm[1]:<10}{arm[2]:<9}{arm[3]:<4}" + "".join(f"{v:<8.2f}" for v in cells))
+    for L in churns:
+        for m in (1.05, 1.10):
+            tight = defaultdict(dict)
+            for r in runs:
+                tight[arm_name(r)][r["rep"]] = {"m": misses(r, mid * m)}
+            compare(f"x{m:.2f}, L={L}, nested vs evenly spaced, host copy", tight, "m",
+                    ("runtime", "nested", "clean", L), ("runtime", "upstream", "clean", L))
 
     # The price of nesting: a nested order fixes one priority order for every
     # K, so at a given K it may place layers worse than a rule free to choose
