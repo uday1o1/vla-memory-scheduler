@@ -8,7 +8,7 @@
 
 Vision-Language-Action (VLA) models for autonomous driving, such as NVIDIA's open 10-billion-parameter Alpamayo, are too large to fit in the memory of commodity and automotive-grade GPUs. A peer-reviewed system, `oom-free-alpamayo` (IEEE RTCSA 2026), fixes the fit problem by streaming model layers between CPU and GPU on demand, but the specific set of layers it keeps GPU-resident is decided once, offline, by capacity arithmetic on an idle GPU, and never revisited. This project treats that residency count as a characterized runtime knob rather than a fixed offline choice: it measures what the knob costs in latency and buys in memory footprint, evaluates selecting among pre-profiled residency configurations against the fixed static choice under a controlled competing workload, and measures the overhead of changing residency itself.
 
-That overhead turned out to be the project's principal result. The upstream placement rule is not nested across residency levels, so changing the resident count reshuffles layers that did not need to move. Making the residency family nested removes that cost, provably: a transition costs the symmetric difference of the two residency sets, which is at least the change in count, with equality exactly when one set contains the other. A nested rule built by recursive bisection meets the bound at every transition, produces bit-identical model outputs, and is measured at up to 21.84x faster than upstream at the single-level adjustments a switching policy makes. The gain belongs to nestedness rather than to that particular rule: four simpler nested orders were tested and all are equally move-optimal, with several achieving better layer spread. Full numbers and sources: `proposal.md` and `literature-survey.md`.
+That overhead turned out to be the project's principal result, and it has two parts, both avoidable in the deployed design. The upstream placement rule spaces resident layers evenly, as Oneiros and Select-N also do, and is not nested across residency levels, so a change moves layers that did not need to move: up to 33 moves for a change of one. Any nested order meets the minimum of the change in count, which is the inclusion property of stack algorithms applied to resident layers; measured, it is up to 21.84x faster per transition with bit-identical outputs. And demoting a layer copies it back to host memory and pins it, where keeping a pinned host copy, standard in other offloading systems, makes demotion 9 to 14 times cheaper, again with identical outputs. Whether these costs make a policy that tracks free memory miss deadlines that a static choice would meet is what the trace experiment measures. Full numbers and sources: `proposal.md` and `literature-survey.md`.
 
 ## Deliverables
 
@@ -27,6 +27,8 @@ scheduler/                  importable library, shared by every experiment
   contention.py             competing GPU workload generator
   inputs.py                 driving-clip input preparation
   memory.py                 VRAM accounting and a competing allocator
+  residency.py              changing the resident set, with copy or clean demotion
+  trace.py                  a co-located tenant's changing demand, and the policies
   provenance.py             hardware and invocation recorded into every result
 
 experiments/
@@ -35,6 +37,7 @@ experiments/
   switching/                static residency against profile switching
   dynamic/                  whether upgrading residency repays its own cost
   contention/               compute-contention boundary and interaction
+  trace/                    static against switching under a changing tenant demand
   colocation/               two tenants sharing one GPU
   probes/                   bounded investigations that settled a design question
 
@@ -145,6 +148,27 @@ The same measurement on an RTX 4090 spans 0.22 percent across 14
 reconstructions, so the cost can be this large but is not always present. The
 remedy costs nothing where the hazard is absent.
 
+**Demoting a layer, and keeping a host copy.** Upstream makes a layer resident
+by moving its only copy to the device, so demoting it copies it back to
+pageable host memory and pins it. Inference never writes the weights, so a
+pinned host copy kept from the start makes that transfer unnecessary.
+Measured on an RTX 3090 over four cycles after a discarded one, in both orders:
+
+| change | copy back (upstream) | host copy kept | |
+|---|---|---|---|
+| demote 8 layers | 2.42s | 0.28s | 8.8x |
+| demote 9 layers | 2.71s | 0.28s | 9.7x |
+| demote 17 layers | 4.97s | 0.36s | 13.9x |
+| promote 17 layers | 0.74s | 0.72s | |
+
+What remains is returning memory to the driver, which a co-located process
+needs; the pipeline rebuild itself takes 0.015s. Outputs are bit-identical
+across mechanisms. The price is 12.94GB of extra pinned host memory. This is
+standard practice in FlexGen, DeepSpeed, Accelerate, vLLM and Oneiros, so it
+is a correction to the upstream system rather than a contribution. Copy
+demotion cost 0.29s per layer on this host and 0.71s on an earlier one, so
+how much it matters depends on the host.
+
 **Compute contention, a negative result.** A duty-cycled saturating workload
 sharing the GPU under CUDA MPS slows every residency level proportionally, by
 0.988x, 1.005x and 1.031x at K=16, 24 and 33. Residency has no lever against
@@ -171,11 +195,16 @@ python scheduler/placement.py              # nesting, spread and move counts
 python experiments/placement/theory.py     # move-optimality and the ablation
 python experiments/switching/analyze.py    # static against profile switching
 python experiments/contention/analyze.py   # the compute-contention boundary
+python scheduler/trace.py                  # the trace and policies discriminate
+python experiments/trace/simulate.py       # design check from committed costs
+python experiments/trace/analyze.py        # the trace experiment
+python experiments/trace/plot.py           # its figures
 ```
 
-The two scripts that compare against the upstream rule report that it is
-unavailable and skip that column when the Alpamayo packages are absent, rather
-than failing.
+The upstream placement rule is reproduced in `scheduler/placement.py`, so
+comparisons against it need neither the upstream package nor a GPU; its
+self-check confirms the reproduction matches the original at every residency
+level whenever the original is installed.
 
 **With a GPU.** Taking the measurements needs a CUDA GPU with at least 12GB of
 VRAM, the upstream Alpamayo packages, and access to a gated dataset:
@@ -188,7 +217,16 @@ python experiments/characterize/build_profiles.py
 VLA_PROFILES=data/profiles.json \
   python experiments/switching/run.py            # the primary experiment
 python experiments/placement/benchmark.py        # transition cost and latency parity
+python experiments/placement/eviction.py --demotion copy    # demotion cost, upstream
+python experiments/placement/eviction.py --demotion clean   # demotion cost, host copy kept
+VLA_PROFILES=data/profiles.json \
+  python experiments/trace/run.py                # static against switching, changing tenant
 ```
+
+The trace experiment needs a 24GB card and checks before starting that its
+demand pattern separates the policies with the profiles in use. Keeping a
+host copy of every layer pins the whole model in host memory, so allow at
+least 64GB of RAM.
 
 The profiles committed in `scheduler/profiles.py` were measured on an RTX 3090
 and the deadline is derived from them, so they describe that card and not the
