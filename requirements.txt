@@ -12,3 +12,4 @@
 # are deliberately not pinned here.
 
 scipy>=1.11
+matplotlib>=3.7
