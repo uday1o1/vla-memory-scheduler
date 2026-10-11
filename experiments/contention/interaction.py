@@ -1,16 +1,29 @@
-"""Bounded experiment: does compute contention affect latency(K) uniformly,
-or does it disproportionately hurt low-K (streaming-heavy) vs high-K
-(residency-heavy) configurations?
+"""Does compute contention slow every residency level alike, or does it hurt
+the streaming-heavy low levels more than the residency-heavy high ones?
 
-This resolves a real design fork in Algorithm 1.2: should the policy
-increase or decrease K under sensed contention? Answered empirically here
-rather than assumed.
+If contention hurt low K more, a policy could protect latency by raising K
+under contention; if it hurt high K more, by lowering it; if alike, residency
+has no lever against compute contention. A second process runs a saturating
+GEMM at a fixed duty cycle (scheduler/contention.py). Each repetition times
+calls with and without it, alternating which comes first so that neither
+condition always follows the other, and every call is kept.
+
+The earlier measurement ran the two processes under CUDA MPS, so that their
+kernels share the GPU concurrently rather than by time-slicing. Start it first
+to match (as root: nvidia-cuda-mps-control -d); whether it was running is
+recorded in the output.
+
+    python experiments/contention/interaction.py --reps 5
 """
 from __future__ import annotations
 
+import argparse
 import gc
+import json
 import multiprocessing as mp
 import os
+import statistics
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -19,28 +32,37 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 import torch  # noqa: E402
 
-from pathlib import Path as _Path  # noqa: E402
-sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from scheduler.paths import R1_CONFIG, bootstrap  # noqa: E402
+from scheduler.paths import R1_CONFIG, RESULTS, bootstrap  # noqa: E402
 
 bootstrap()
 
 from alpamayo_memopt import load_config  # noqa: E402
 from alpamayo_memopt.models import TriHookPipeline, get_adapter  # noqa: E402
-from alpamayo_memopt.profiler import interleaved_placement  # noqa: E402
 
 from scheduler.inputs import prepare_inputs_for_clip  # noqa: E402
+from scheduler.placement import upstream_placement  # noqa: E402
+from scheduler.provenance import run_metadata  # noqa: E402
 
 
 def dummy_compute_load(stop_flag, device_idx: int = 0, duty_cycle: float = 0.70):
-    """Background compute-bound kernel at our locked 70% duty-cycle target."""
+    """Saturating GEMM in its own process at the given duty cycle."""
     from scheduler.contention import steady_load
     while not stop_flag.is_set():
         steady_load(time.time() + 1.0, duty_cycle=duty_cycle, device_idx=device_idx)
 
 
 def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--k-values", type=int, nargs="+", default=[16, 24, 33])
+    p.add_argument("--reps", type=int, default=5)
+    p.add_argument("--calls", type=int, default=2, help="timed calls per condition per rep")
+    p.add_argument("--duty-cycle", type=float, default=0.70)
+    p.add_argument("--clip-id", default="d497f01b-4f68-4c27-9a6c-55872a1d6bd6")
+    p.add_argument("--output", type=Path, default=RESULTS / "compute_interaction.json")
+    args = p.parse_args()
+
     device = "cuda:0"
     torch.cuda.set_device(0)
     from transformers.utils import logging as _hf
@@ -64,60 +86,67 @@ def main():
     print("Loading model...")
     loaded = adapter.load(a, config)
     adapter.setup_essentials(loaded, device)
-    inputs = prepare_inputs_for_clip(loaded, "d497f01b-4f68-4c27-9a6c-55872a1d6bd6", device)
+    inputs = prepare_inputs_for_clip(loaded, args.clip_id, device)
     n_vlm = len(loaded.vlm_layers)
+    current: set[int] = set()
+    mps = subprocess.run(["pgrep", "-f", "nvidia-cuda-mps-control"],
+                         capture_output=True).returncode == 0
+    record = {"meta": run_metadata(args), "mps": mps, "levels": {}}
+    print(f"CUDA MPS {'running' if mps else 'not running'}")
 
-    test_k_values = [16, 24, 33]
-    current_resident = set()
+    def contended(fn):
+        stop = mp.Event()
+        proc = mp.Process(target=dummy_compute_load, args=(stop, 0, args.duty_cycle))
+        proc.start()
+        time.sleep(1.0)  # let the load reach its duty cycle
+        try:
+            return fn()
+        finally:
+            stop.set()
+            proc.join(timeout=5)
+            if proc.is_alive():
+                proc.terminate()
 
-    print(f"\n{'K':<6}{'No-contention (s)':<20}{'With-contention (s)':<22}{'Slowdown factor'}")
-    for k in test_k_values:
-        target_indices = set(interleaved_placement(k, n_vlm)) if k > 0 else set()
-        for i in target_indices - current_resident:
+    for k in args.k_values:
+        target = set(upstream_placement(k, n_vlm))
+        for i in target - current:
             loaded.vlm_layers[i].to(device)
-        for i in current_resident - target_indices:
+        for i in current - target:
             loaded.vlm_layers[i].to("cpu")
-        current_resident = target_indices
+        current = target
         torch.cuda.synchronize()
-
         pipeline = TriHookPipeline(loaded.vlm_layers, loaded.vit_blocks,
-                                    loaded.expert_layers, list(target_indices), device=device)
+                                   loaded.expert_layers, list(target), device=device)
 
-        def run_once():
+        def run_once() -> float:
+            t0 = time.perf_counter()
             pipeline.start_iteration()
             with torch.no_grad():
                 adapter.run(loaded, inputs, a)
             torch.cuda.synchronize()
+            return time.perf_counter() - t0
+
+        def timed():
+            return [run_once() for _ in range(args.calls)]
 
         run_once()  # warmup
-
-        # No contention
-        t0 = time.perf_counter()
-        run_once()
-        no_contention_s = time.perf_counter() - t0
-
-        # With contention: launch a real second process under MPS
-        stop_flag = mp.Event()
-        proc = mp.Process(target=dummy_compute_load, args=(stop_flag, 0))
-        proc.start()
-        time.sleep(1.0)  # let contention ramp up
-
-        t0 = time.perf_counter()
-        run_once()
-        with_contention_s = time.perf_counter() - t0
-
-        stop_flag.set()
-        proc.join(timeout=5)
-        if proc.is_alive():
-            proc.terminate()
-
-        slowdown = with_contention_s / no_contention_s
-        print(f"{k:<6}{no_contention_s:<20.3f}{with_contention_s:<22.3f}{slowdown:.3f}x")
-
+        free, cont = [], []
+        for rep in range(args.reps):
+            if rep % 2 == 0:
+                free += timed(); cont += contended(timed)
+            else:
+                cont += contended(timed); free += timed()
+        ratio = statistics.median(cont) / statistics.median(free)
+        record["levels"][str(k)] = {"no_contention_s": free, "contention_s": cont,
+                                    "slowdown": ratio}
+        print(f"K={k:<4}no contention {statistics.median(free):.3f}s  "
+              f"contention {statistics.median(cont):.3f}s  slowdown {ratio:.3f}x  "
+              f"(n={len(free)} each)")
         pipeline.remove()
         gc.collect()
         torch.cuda.empty_cache()
-        time.sleep(1.0)
+        args.output.write_text(json.dumps(record, indent=1))
+    print(f"Saved -> {args.output}")
 
 
 if __name__ == "__main__":
