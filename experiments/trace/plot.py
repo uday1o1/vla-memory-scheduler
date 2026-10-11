@@ -139,7 +139,7 @@ def sensitivity(runs, axes):
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--input", type=Path, default=REPO / "data" / "trace_results.json")
+    p.add_argument("--input", type=Path, default=REPO / "data" / "trace_results_3090.json")
     p.add_argument("--outdir", type=Path, default=REPO / "figures")
     p.add_argument("--phase-calls", type=int, default=2)
     p.add_argument("--rep", type=int, default=0)

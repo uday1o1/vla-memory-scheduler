@@ -8,7 +8,7 @@
 
 Vision-Language-Action (VLA) models for autonomous driving, such as NVIDIA's open 10-billion-parameter Alpamayo, are too large to fit in the memory of commodity and automotive-grade GPUs. A peer-reviewed system, `oom-free-alpamayo` (IEEE RTCSA 2026), fixes the fit problem by streaming model layers between CPU and GPU on demand, but the specific set of layers it keeps GPU-resident is decided once, offline, by capacity arithmetic on an idle GPU, and never revisited. This project treats that residency count as a characterized runtime knob rather than a fixed offline choice: it measures what the knob costs in latency and buys in memory footprint, evaluates selecting among pre-profiled residency configurations against the fixed static choice under a controlled competing workload, and measures the overhead of changing residency itself.
 
-That overhead turned out to be the project's principal result, and it has two parts, both avoidable in the deployed design. The upstream placement rule spaces resident layers evenly, as Oneiros and Select-N also do, and is not nested across residency levels, so a change moves layers that did not need to move: up to 33 moves for a change of one. Any nested order meets the minimum of the change in count, which is the inclusion property of stack algorithms applied to resident layers; measured, it is up to 21.84x faster per transition with bit-identical outputs. And demoting a layer copies it back to host memory and pins it, where keeping a pinned host copy, standard in other offloading systems, makes demotion 9 to 14 times cheaper, again with identical outputs. Whether these costs make a policy that tracks free memory miss deadlines that a static choice would meet is what the trace experiment measures. Full numbers and sources: `proposal.md` and `literature-survey.md`.
+That overhead turned out to be the project's principal result, and it has two parts, both avoidable in the deployed design. The upstream placement rule spaces resident layers evenly, as Oneiros and Select-N also do, and is not nested across residency levels, so a change moves layers that did not need to move: up to 33 moves for a change of one. Any nested order meets the minimum of the change in count, which is the inclusion property of stack algorithms applied to resident layers; measured, it is up to 21.84x faster per transition with bit-identical outputs. And demoting a layer copies it back to host memory and pins it, where keeping a pinned host copy, standard in other offloading systems, makes demotion 9 to 14 times cheaper, again with identical outputs. Under a co-located workload whose memory demand changes, they do: in the deployed design, the cost of switching makes one call in nine miss at the faster churn rate. Keeping the host copy removes those misses; nested placement shortens every change but does not change the deadline outcome. Full numbers and sources: `proposal.md` and `literature-survey.md`.
 
 ## Deliverables
 
@@ -42,12 +42,66 @@ experiments/
   probes/                   bounded investigations that settled a design question
 
 data/                       measured results, one JSON per run, suffixed by GPU
+figures/                    the trace experiment's figures and an animation of one run
 setup/setup_instance.sh     one-command GPU instance setup
 ```
 
 ## Results
 
-**Static residency against profile switching.** Eight repetitions per condition,
+**Static residency against profile switching, under a changing tenant.** The
+primary experiment. A second process holds GPU memory following a pattern of
+8, 11, 8, 0, 8, 0, 11 and 0 GB over 48 calls, each phase lasting 6 or 2
+calls; the driving model must yield memory for the tenant to be admitted.
+Three profiles, fast (K=33), mid (K=24) and compact (K=16); the deadline is
+the mid profile's latency times 1.15, 13.80s. 120 runs on an RTX 3090: eight
+repetitions over six clips, arm order shuffled, paired Wilcoxon signed-rank
+(`data/trace_results_3090.json`).
+
+| policy | miss rate | tenant refused | both served | mean latency |
+|---|---|---|---|---|
+| static fast (the upstream choice) | 0.000 | 0.625 | 0.375 | 6.72s |
+| startup (reads free memory once) | 0.000 | 0.250 | 0.750 | 11.34s |
+| static compact | 0.940 | 0.000 | 0.060 | 15.47s |
+| switching, 2 calls per phase | 0.242 | 0.000 | 0.758 | 10.89s |
+
+No static choice serves both. Switching admits the tenant on every call and
+misses only in the 11GB phases, where the one profile that fits cannot meet
+the deadline. Against startup the two measures trade one for one (calls with
+both served 0.758 against 0.750, p=1.0) while mean latency is lower
+(p=0.0078), because switching runs the fast profile while the tenant is idle.
+
+![Tenant demand and per-call latency for one repetition](figures/trace_timeline_L2.png)
+
+**Does the cost of changing residency cause misses?** The two ways to make a
+change cheaper, as a two-by-two, under the runtime policy. Each cell gives 6 / 2
+calls per phase.
+
+| placement, demotion | misses caused by a change | change seconds per run | tenant wait (median) |
+|---|---|---|---|
+| evenly spaced, copy back (deployed) | 1.12 / **5.38** | 19.7 / 62.2 | 5.6 / 3.9s |
+| nested, copy back | 1.12 / 4.38 | 15.2 / 48.0 | 4.2 / 3.1s |
+| evenly spaced, host copy (Oneiros-style) | 0.25 / 0.25 | 3.8 / 11.9 | 0.44 / 0.44s |
+| nested, host copy | **0.00 / 0.38** | 3.3 / 10.6 | 0.40 / 0.36s |
+
+In the deployed design it does, and demotion is why. Keeping a host copy
+removes the misses (p=0.0078 at both churn rates) and shortens the tenant's
+wait for memory roughly tenfold. Nested placement shortens every change, by
+23 percent with copy demotion and 11 to 12 percent with a host copy
+(p=0.0078 in all four), but changes no miss count detectably: with a host
+copy, a promotion takes 0.3 to 0.7s against about 1.7s of slack. Scoring the
+recorded calls against deadlines from 1.00 to 1.35 times the mid latency
+gives the same picture at every deadline. Nesting costs nothing at steady
+state (at most 0.13 percent). A policy that changes less often, preferring
+the slowest profile that meets the deadline, also removes most change-caused
+misses under copy demotion (0.50 against 4.38, p=0.0078), at 1.2s of mean
+latency.
+
+![Misses caused by a residency change, per arm](figures/trace_transition_misses.png)
+
+![Deadline misses against the deadline, runtime arms](figures/trace_deadline_sensitivity.png)
+
+**Static residency against profile switching, under pressure held before
+launch.** Eight repetitions per condition,
 six clips cycled, paired Wilcoxon signed-rank. The deadline is the middle
 profile's latency times 1.15, which is 14.16s. Memory pressure is an
 independent process holding VRAM before the model process starts.
@@ -198,7 +252,7 @@ python experiments/contention/analyze.py   # the compute-contention boundary
 python scheduler/trace.py                  # the trace and policies discriminate
 python experiments/trace/simulate.py       # design check from committed costs
 python experiments/trace/analyze.py        # the trace experiment
-python experiments/trace/plot.py           # its figures
+python experiments/trace/plot.py           # its figures, and --animate out.mp4
 ```
 
 The upstream placement rule is reproduced in `scheduler/placement.py`, so

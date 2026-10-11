@@ -83,7 +83,7 @@ def compare(label, rows, key, a, b):
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--input", type=Path, default=Path("data/trace_results.json"))
+    p.add_argument("--input", type=Path, default=Path("data/trace_results_3090.json"))
     args = p.parse_args()
     data = json.loads(args.input.read_text())
     runs = data["runs"]
