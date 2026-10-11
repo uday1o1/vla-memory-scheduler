@@ -224,10 +224,15 @@ is a correction to the upstream system rather than a contribution. Copy
 demotion cost 0.29s per layer on this host and 0.71s on an earlier one, so
 how much it matters depends on the host.
 
-**Compute contention, a negative result.** A duty-cycled saturating workload
-sharing the GPU under CUDA MPS slows every residency level proportionally, by
-0.988x, 1.005x and 1.031x at K=16, 24 and 33. Residency has no lever against
-compute contention, which is why memory pressure is the primary scenario.
+**Compute contention, a negative result.** A second process running a
+saturating GEMM at a 70 percent duty cycle under CUDA MPS adds about two
+seconds to every residency level, 1.71, 2.23 and 2.12s at K=16, 24 and 33,
+over 8 repetitions in alternating order (`data/compute_interaction_3090.json`).
+The fastest configuration stays fastest under contention, 6.04s at K=33
+against 10.28s at K=16, so lowering residency never helps, and contention
+leaves free memory unchanged, so a policy reading it sees nothing. Residency
+has no lever against compute contention, which is why memory pressure is the
+primary scenario.
 
 **Residency change overhead.** Changing residency costs 0.3 to 4.7 seconds
 against 7 to 17 seconds of inference, and is asymmetric: shedding layers is
@@ -295,6 +300,7 @@ committed data:
 | four eviction runs | 31 min | `eviction_*.json` | the demotion table |
 | trace pilot | 1 h 41 min | `trace_pilot.json` | a check that every arm runs cleanly |
 | trace | 20 h 40 min | `trace_results.json`, `trace/` | the primary experiment |
+| compute contention | under 20 min, on a faster host | `compute_interaction.json` | the compute-contention boundary |
 
 **What should reproduce, and how closely.** Move counts, spread and the
 placement theory are combinatorial and reproduce exactly. Outputs are
@@ -326,7 +332,7 @@ marked below.
 | placement end to end | `adaptive_cost_{3090,4090}.json` | `experiments/placement/adaptive_cost.py` | values read directly |
 | spread and latency | `spread_latency_4090.json` | `experiments/placement/spread_latency.py` | values read directly |
 | pipeline rebuild cost | `bistability_3090.json`, `rebuild_only_3090.json`, `transition_frequency_3090.json`, `buffer_placement2_3090.json`, `iso_{events,stream}_3090.json`, `reuse_stream_3090.json`, `stream_identity_3090.json`, `stream_reuse_value_3090.json`, `rebuild_4090.json`, `clock_ramp_*_3090.json`, `churn_recovery_*.json`, `transition_residue_3090.json`, `pinning_scaling_3090.json` | `experiments/probes/`, `experiments/placement/` | values read directly |
-| compute contention | `compute_contention_3090.json`*, `compute_boundary_results_3090.json`* | `experiments/contention/` | `experiments/contention/analyze.py` |
+| compute contention | `compute_interaction_3090.json`; earlier, `compute_contention_3090.json`*, `compute_boundary_results_3090.json`* | `experiments/contention/interaction.py`; earlier, `run.py`, `boundary.py` | values read directly; `experiments/contention/analyze.py` for the earlier runs |
 | two tenants on one GPU | `colocation_results_3090.json`* | `experiments/colocation/run.py` | values read directly |
 
 \* recorded before invocations were stored; produced by the listed script.

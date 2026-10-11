@@ -55,6 +55,10 @@ if [ "$WHAT" != placement ]; then
   stage trace_pilot  python experiments/trace/run.py --reps 1 --phase-calls 2 --output "$R/trace_pilot.json" --outdir "$R/trace_pilot"
   stage trace        python experiments/trace/run.py --reps 8 --phase-calls 6 2
   stage trace_rerun  python experiments/trace/run.py --rerun-failed
+  # Compute contention, last, since it runs under CUDA MPS and nothing else does.
+  nvidia-cuda-mps-control -d 2>/dev/null || echo "CUDA MPS could not be started; recorded in the output"
+  stage contention   python experiments/contention/interaction.py --reps 8
+  echo quit | nvidia-cuda-mps-control 2>/dev/null || true
 fi
 
 if [ "$WHAT" != core ]; then
