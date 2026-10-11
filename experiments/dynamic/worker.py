@@ -5,9 +5,8 @@ competitor cannot squeeze a process that already holds its allocation. What
 can happen is the reverse: the competitor releases, memory becomes available,
 and a process running on a small profile could now afford a faster one.
 
-So the transition this experiment exercises is the upgrade, and the question
-the professor raised applies directly to it. Upgrading costs a residency
-change. If that change costs more than it saves, the upgrade is a loss. This
+So the transition this experiment exercises is the upgrade. Upgrading costs
+a residency change. If that change costs more than it saves, the upgrade is a loss. This
 measures whether it pays back, and how that depends on the placement rule
 governing how many layers must move.
 
