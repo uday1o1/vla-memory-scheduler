@@ -1,13 +1,6 @@
-# Papers (Sem3/reference/) and cloned repos (Sem3/cloned-repos/) we build on top
-# of live one level up, shared between IAS and DL and not part of this project's
-# own codebase, not committed here.
-
 __pycache__/
 *.pyc
 .DS_Store
 PROJECT_DETAILS.md
 MANUSCRIPT.md
-.claude/
-.agents/
-skills-lock.json
 results/

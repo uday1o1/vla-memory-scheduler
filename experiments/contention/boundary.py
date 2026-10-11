@@ -1,8 +1,8 @@
 """The compute-contention boundary, retested against the proposed policy.
 
-The earlier compute-contention result was collected with a continuous-K policy
-that has since been withdrawn. A boundary claim should be tested against the
-design actually being proposed, so this repeats it with profile switching.
+experiments/contention/run.py measures compute contention with the
+continuous-K controller in scheduler/policy.py. A boundary claim should hold
+for the profile-switching policy as well, so this repeats it with switching.
 
 The expectation, stated before running: compute contention does not change how
 much GPU memory is free, so the switching policy will select the same profile

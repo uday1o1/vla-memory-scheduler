@@ -1,6 +1,6 @@
 """Analysis of the static versus profile-switching experiment.
 
-Primary metric is deadline-miss rate, as the professor asked. Completion rate
+Primary metric is deadline-miss rate. Completion rate
 is reported alongside it because the two arms can fail differently: a run that
 never produces a trajectory misses every deadline, but it is a different
 failure from one that produces trajectories too slowly, and collapsing them

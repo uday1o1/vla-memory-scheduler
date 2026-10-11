@@ -23,7 +23,7 @@ scheduler/                  importable library, shared by every experiment
   paths.py                  resolves the repo, the upstream clone, and the results directory
   placement.py              nested residency placement via recursive bisection
   profiles.py               pre-profiled residency configurations and the switching rule
-  policy.py                 continuous-K policy, withdrawn: it could not differ from its control
+  policy.py                 continuous-K controller driven by latency drift (contention/run.py)
   contention.py             competing GPU workload generator
   inputs.py                 driving-clip input preparation
   memory.py                 VRAM accounting and a competing allocator

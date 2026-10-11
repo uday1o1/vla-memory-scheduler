@@ -6,7 +6,7 @@ this process already holds, so pressure only binds when it pre-exists.
 
 static    always loads the upstream offline choice (K=33), which was profiled
           on an idle GPU and does not consult runtime memory
-switching what the professor recommended: choose among pre-profiled
+switching choose among pre-profiled
           configurations using measured free memory
 
 The model is loaded once and all repetitions run inside this process. Each

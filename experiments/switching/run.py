@@ -1,16 +1,16 @@
 """Primary experiment: static residency versus contention-aware profile switching.
 
-This is the comparison the professor asked for, with deadline-miss rate as the
-headline metric under a controlled competing GPU workload.
+Deadline-miss rate is the headline metric, under a controlled competing GPU
+workload.
 
 Memory pressure rather than compute contention is the regime under test.
-Compute contention was measured to slow every residency level proportionally
-(0.988x/1.005x/1.031x at K=16/24/33), leaving residency with no lever against
-it, so a static-versus-switching comparison under compute contention alone is
-degenerate by construction. That is the exact failure mode that invalidated
-the earlier design. Memory pressure is where the residency decision changes
-the outcome. The compute-contention result is retained and reported as a
-negative boundary on where the mechanism applies.
+Compute contention adds about the same time at every residency level (about
+two seconds at K=16/24/33, experiments/contention/interaction.py), so the
+fastest level stays fastest and residency has no lever against it: a
+static-versus-switching comparison under compute contention alone would be
+degenerate by construction. Memory pressure is where the residency decision
+changes the outcome. The compute-contention result is reported as a boundary
+on where the mechanism applies.
 
 This driver holds the pressure itself and starts each model run as a
 subprocess, since whoever allocates first keeps the memory.

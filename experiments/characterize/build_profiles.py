@@ -97,7 +97,7 @@ def main() -> None:
             "static residency would carry no information. Measure levels that are "
             "further apart in latency."
         )
-    print("  the deadline separates the profiles, so the comparison is graded")
+    print("  the deadline separates the profiles, so the comparison is informative")
 
     args.output.write_text(json.dumps({"profiles": profiles}, indent=2))
     print(f"\nSaved -> {args.output}")

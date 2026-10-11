@@ -66,11 +66,11 @@ DEFAULT_PROFILES: tuple[Profile, ...] = (
     Profile("compact", 16, 17.06, 11.28),
 )
 
-# The deadline is anchored to the MIDDLE profile, not the fastest. Anchoring
-# to the fastest is what made the previous design untestable: every profile
-# below it then misses by construction, so both arms miss and the comparison
-# carries no information. Anchored here, `fast` and `mid` meet the deadline
-# and `compact` does not, which is what makes the comparison graded.
+# The deadline is anchored to the MIDDLE profile, not the fastest. Anchored to
+# the fastest, every profile below it misses by construction, so both arms
+# miss and the comparison carries no information. Anchored here, `fast` and
+# `mid` meet the deadline and `compact` does not, so the choice of profile
+# decides the outcome.
 PROFILES: tuple[Profile, ...] = (
     load_profiles(os.environ["VLA_PROFILES"])
     if os.environ.get("VLA_PROFILES") else DEFAULT_PROFILES
