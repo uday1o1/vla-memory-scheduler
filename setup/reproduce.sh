@@ -73,4 +73,5 @@ echo "Done. Compare against the committed results with:"
   python experiments/trace/analyze.py --input "$R/trace_results.json"
   python experiments/trace/plot.py --input "$R/trace_results.json" --outdir "$R/figures"
 MSG
+[ "$WHAT" != core ] && echo "  python experiments/placement/bench_analyze.py --dir \"$R\""
 echo "  and data/calibration_3090.json, data/vram_per_k_3090.json against $R/."

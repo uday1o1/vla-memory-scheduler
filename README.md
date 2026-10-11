@@ -256,6 +256,7 @@ python experiments/trace/simulate.py       # design check from committed costs
 python experiments/trace/analyze.py        # the trace experiment
 python experiments/trace/plot.py           # its figures, and --animate out.mp4
 python experiments/placement/eviction_analyze.py   # the demotion table
+python experiments/placement/bench_analyze.py      # transition speedup, latency parity
 ```
 
 The upstream placement rule is reproduced in `scheduler/placement.py`, so
@@ -320,7 +321,7 @@ marked below.
 | demotion, host copy kept | `eviction_{copy,clean}_nested{,_order2}_3090.json` | `experiments/placement/eviction.py` | `experiments/placement/eviction_analyze.py` |
 | static against switching, pressure before launch | `switch_results_3090.json`* | `experiments/switching/run.py` | `experiments/switching/analyze.py` |
 | upgrading mid-run | `dynamic_results_3090.json`* | `experiments/dynamic/run.py` | values read directly |
-| transition cost and latency parity | `placement_bench_{3090,4090,5070ti}.json`* and the runs at `--max-k 14`; `_swapped` and `_nestedfirst` reverse the measurement order | `experiments/placement/benchmark.py` | values read directly |
+| transition cost and latency parity | `placement_bench_{3090,4090,5070ti}.json`* and the runs at `--max-k 14`; `_swapped` and `_nestedfirst` reverse the measurement order | `experiments/placement/benchmark.py` | `experiments/placement/bench_analyze.py` |
 | output equivalence across placements | `placement_correctness_3090.json`* | `experiments/placement/correctness.py` | values read directly |
 | placement end to end | `adaptive_cost_{3090,4090}.json` | `experiments/placement/adaptive_cost.py` | values read directly |
 | spread and latency | `spread_latency_4090.json` | `experiments/placement/spread_latency.py` | values read directly |
