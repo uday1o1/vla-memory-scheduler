@@ -23,7 +23,7 @@ scheduler/                  importable library, shared by every experiment
   paths.py                  resolves the repo, the upstream clone, and the results directory
   placement.py              nested residency placement via recursive bisection
   profiles.py               pre-profiled residency configurations and the switching rule
-  policy.py                 continuous-K residency policy, evaluated under contention
+  policy.py                 continuous-K policy, withdrawn: it could not differ from its control
   contention.py             competing GPU workload generator
   inputs.py                 driving-clip input preparation
   memory.py                 VRAM accounting and a competing allocator
@@ -43,7 +43,8 @@ experiments/
 
 data/                       measured results, one JSON per run, suffixed by GPU
 figures/                    the trace experiment's figures and an animation of one run
-setup/setup_instance.sh     one-command GPU instance setup
+setup/setup_instance.sh     one-command GPU instance setup, upstream pinned
+setup/reproduce.sh          re-runs the measurements behind data/, resumable
 ```
 
 ## Results
@@ -210,7 +211,7 @@ Measured on an RTX 3090 over four cycles after a discarded one, in both orders:
 
 | change | copy back (upstream) | host copy kept | |
 |---|---|---|---|
-| demote 8 layers | 2.42s | 0.28s | 8.8x |
+| demote 8 layers | 2.42s | 0.28s | 8.9x |
 | demote 9 layers | 2.71s | 0.28s | 9.7x |
 | demote 17 layers | 4.97s | 0.36s | 13.9x |
 | promote 17 layers | 0.74s | 0.72s | |
@@ -230,10 +231,11 @@ compute contention, which is why memory pressure is the primary scenario.
 
 **Residency change overhead.** Changing residency costs 0.3 to 4.7 seconds
 against 7 to 17 seconds of inference, and is asymmetric: shedding layers is
-three to six times dearer than restoring them, because offloading pins host
-memory while restoring is a plain device copy. The nested placement rule
-reduces this, by up to 21.84x at the single-level adjustments a switching
-policy makes.
+three to six times dearer than restoring them, because demotion copies each
+layer back to pageable host memory and pins it, while promotion is one copy
+from memory already pinned. Keeping a host copy removes the first, and the
+nested placement rule reduces the number of layers moved, by up to 21.84x per
+transition at the single-level adjustments a switching policy makes.
 
 ## Reproducing
 
@@ -253,6 +255,7 @@ python scheduler/trace.py                  # the trace and policies discriminate
 python experiments/trace/simulate.py       # design check from committed costs
 python experiments/trace/analyze.py        # the trace experiment
 python experiments/trace/plot.py           # its figures, and --animate out.mp4
+python experiments/placement/eviction_analyze.py   # the demotion table
 ```
 
 The upstream placement rule is reproduced in `scheduler/placement.py`, so
@@ -260,34 +263,80 @@ comparisons against it need neither the upstream package nor a GPU; its
 self-check confirms the reproduction matches the original at every residency
 level whenever the original is installed.
 
-**With a GPU.** Taking the measurements needs a CUDA GPU with at least 12GB of
-VRAM, the upstream Alpamayo packages, and access to a gated dataset:
+**With a GPU.** One command re-runs the primary measurements in the order and
+with the arguments that produced the committed data:
 
 ```
-bash setup/setup_instance.sh     # clones upstream, installs, fetches weights, profiles
+bash setup/reproduce.sh            # characterization, demotion, trace experiment
+bash setup/reproduce.sh placement  # transition cost, parity, equivalence
+```
+
+It installs everything first (`setup/setup_instance.sh`), writes to `results/`
+so the committed `data/` is never overwritten, resumes at the first unfinished
+stage after an interruption, and prints the analysis commands to run on its
+output when it finishes. Both upstream repositories are checked out at the
+commits every committed result was measured with (oom-free-alpamayo
+`b724a08`, alpamayo `11a0e01`).
+
+| requirement | why |
+|---|---|
+| NVIDIA GPU with 24GB (the committed runs used an RTX 3090, driver 565.57) | the committed runs reach K=33, 16.7GB, and the trace experiment's tenant demands are sized for a 24GB card; it refuses to start on a card where its design cannot separate the policies |
+| 64GB host memory or more | keeping a host copy pins the whole model in host memory |
+| disk for 21GB of weights plus the environment | Alpamayo-R1-10B is downloaded once |
+| Hugging Face token with "read public gated repos" enabled | the driving clips come from a gated dataset; the permission is off by default |
+
+What each stage of the primary run took on the RTX 3090 that produced the
+committed data:
+
+| stage | time | output | feeds |
+|---|---|---|---|
+| calibrate, vram, profiles | 18 min | `calibration.json`, `vram_per_k.json`, `profiles.json` | the residency tradeoff and the three profiles |
+| four eviction runs | 31 min | `eviction_*.json` | the demotion table |
+| trace pilot | 1 h 41 min | `trace_pilot.json` | a check that every arm runs cleanly |
+| trace | 20 h 40 min | `trace_results.json`, `trace/` | the primary experiment |
+
+**What should reproduce, and how closely.** Move counts, spread and the
+placement theory are combinatorial and reproduce exactly. Outputs are
+bit-identical across residency levels, placements and demotion mechanisms
+within a machine. Latency per residency level agreed to within four percent
+between two RTX 3090 hosts. The cost of copy demotion depends on the host as
+much as the GPU, 0.29 seconds per layer on one 3090 host and 0.71 on another,
+so the number of misses it causes in the trace experiment will move with the
+host; the direction of every comparison should not. On a different GPU the
+profiles must be re-measured, which the script does: `build_profiles.py` writes
+a profile file for the machine in use and refuses one whose deadline fails to
+separate the profiles.
+
+**Where each result comes from.** Every result file records the GPU, driver,
+PCIe link and exact invocation that produced it under `meta`, and the current
+code also records the commits of this repository and both upstream
+repositories. Files from the earliest experiments predate that record and are
+marked below.
+
+| result | data | produced by | recomputed by, no GPU |
+|---|---|---|---|
+| static against switching, changing tenant; the two-by-two; deadline sensitivity | `trace_results_3090.json` (three runs repeated after a harness fault carry `rerun_of_error`), `trace_pilot_3090.json` | `experiments/trace/run.py` | `experiments/trace/analyze.py`, `plot.py` |
+| residency tradeoff, profiles | `calibration_3090.json`, `vram_per_k_3090.json`, `profiles_3090.json`* | `experiments/characterize/` | values read directly |
+| demotion, host copy kept | `eviction_{copy,clean}_nested{,_order2}_3090.json` | `experiments/placement/eviction.py` | `experiments/placement/eviction_analyze.py` |
+| static against switching, pressure before launch | `switch_results_3090.json`* | `experiments/switching/run.py` | `experiments/switching/analyze.py` |
+| upgrading mid-run | `dynamic_results_3090.json`* | `experiments/dynamic/run.py` | values read directly |
+| transition cost and latency parity | `placement_bench_{3090,4090,5070ti}.json`* and the runs at `--max-k 14`; `_swapped` and `_nestedfirst` reverse the measurement order | `experiments/placement/benchmark.py` | values read directly |
+| output equivalence across placements | `placement_correctness_3090.json`* | `experiments/placement/correctness.py` | values read directly |
+| placement end to end | `adaptive_cost_{3090,4090}.json` | `experiments/placement/adaptive_cost.py` | values read directly |
+| spread and latency | `spread_latency_4090.json` | `experiments/placement/spread_latency.py` | values read directly |
+| pipeline rebuild cost | `bistability_3090.json`, `rebuild_only_3090.json`, `transition_frequency_3090.json`, `buffer_placement2_3090.json`, `iso_{events,stream}_3090.json`, `reuse_stream_3090.json`, `stream_identity_3090.json`, `stream_reuse_value_3090.json`, `rebuild_4090.json`, `clock_ramp_*_3090.json`, `churn_recovery_*.json`, `transition_residue_3090.json`, `pinning_scaling_3090.json` | `experiments/probes/`, `experiments/placement/` | values read directly |
+| compute contention | `compute_contention_3090.json`*, `compute_boundary_results_3090.json`* | `experiments/contention/` | `experiments/contention/analyze.py` |
+| two tenants on one GPU | `colocation_results_3090.json`* | `experiments/colocation/run.py` | values read directly |
+
+\* recorded before invocations were stored; produced by the listed script.
+
+Individual experiments can be run directly, for example:
+
+```
 python experiments/characterize/calibrate.py     # latency per residency level
-python experiments/characterize/vram_per_k.py    # footprint per residency level
-python experiments/characterize/build_profiles.py
-VLA_PROFILES=data/profiles.json \
-  python experiments/switching/run.py            # the primary experiment
-python experiments/placement/benchmark.py        # transition cost and latency parity
-python experiments/placement/eviction.py --demotion copy    # demotion cost, upstream
-python experiments/placement/eviction.py --demotion clean   # demotion cost, host copy kept
-VLA_PROFILES=data/profiles.json \
-  python experiments/trace/run.py                # static against switching, changing tenant
+python experiments/placement/eviction.py --demotion clean
+VLA_PROFILES=results/profiles.json python experiments/trace/run.py --reps 1 --phase-calls 2
 ```
-
-The trace experiment needs a 24GB card and checks before starting that its
-demand pattern separates the policies with the profiles in use. Keeping a
-host copy of every layer pins the whole model in host memory, so allow at
-least 64GB of RAM.
-
-The profiles committed in `scheduler/profiles.py` were measured on an RTX 3090
-and the deadline is derived from them, so they describe that card and not the
-one running. `build_profiles.py` turns the two characterization runs into a
-profile file for the machine in use, and refuses to emit one whose deadline
-fails to separate the profiles, since a comparison against static residency
-would then carry no information.
 
 `nvidia/PhysicalAI-Autonomous-Vehicles` is gated and needs a Hugging Face token
 whose "read public gated repos" permission is explicitly enabled, which is not
@@ -295,10 +344,7 @@ granted by default. Place it where `huggingface_hub` stores tokens, or export
 `HF_TOKEN`. Setup honours `WORKDIR` for where the upstream clones live and
 `VENV` for a virtualenv to activate; experiments honour `ALPAMAYO_HOME` for a
 clone that is not a sibling of this repository and `VLA_RESULTS` for an output
-directory other than `data/`.
-
-Results are written with the GPU, driver, PCIe link and invocation that produced
-them, so any number in `data/` can be traced to its hardware.
+directory.
 
 ## Foundation
 

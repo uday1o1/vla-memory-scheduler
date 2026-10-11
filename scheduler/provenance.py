@@ -10,6 +10,7 @@ from __future__ import annotations
 import subprocess
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 
 def run_metadata(args=None) -> dict:
@@ -40,6 +41,22 @@ def run_metadata(args=None) -> dict:
             )
             if out.returncode == 0 and out.stdout.strip():
                 meta[field.replace(".", "_")] = out.stdout.strip().splitlines()[0].strip()
+        except Exception:
+            pass
+
+    # Commits of this repository and of the upstream code it runs on.
+    root = Path(__file__).resolve().parents[1]
+    try:
+        from scheduler.paths import UPSTREAM
+    except ImportError:
+        UPSTREAM = root.parent / "oom-free-alpamayo"
+    for name, path in (("repo", root), ("oom_free_alpamayo", UPSTREAM),
+                       ("alpamayo", UPSTREAM.parent / "alpamayo")):
+        try:
+            out = subprocess.run(["git", "-C", str(path), "rev-parse", "HEAD"],
+                                 capture_output=True, text=True, timeout=15)
+            if out.returncode == 0:
+                meta[f"commit_{name}"] = out.stdout.strip()
         except Exception:
             pass
 

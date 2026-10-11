@@ -20,6 +20,9 @@
 #   WORKDIR   where the upstream clones live (default: parent of this repo)
 #   VENV      a virtualenv to activate, if not already active
 #   HF_TOKEN  overrides the stored Hugging Face token
+#   OOM_FREE_ALPAMAYO_COMMIT, ALPAMAYO_COMMIT
+#             upstream commits to check out; the defaults are the ones every
+#             result in data/ was measured with
 
 set -euo pipefail
 
@@ -81,9 +84,14 @@ PIP="pip"
 command -v uv >/dev/null 2>&1 && PIP="uv pip"
 
 echo "=== Repositories ==="
+OOM_FREE_ALPAMAYO_COMMIT="${OOM_FREE_ALPAMAYO_COMMIT:-b724a081af5a976c7a412333763ad142150f3dda}"
+ALPAMAYO_COMMIT="${ALPAMAYO_COMMIT:-11a0e01c13a5622377c45ee37d653351453ec43b}"
 cd "$WORKDIR"
 [ -d oom-free-alpamayo ] || git clone -q https://github.com/aveeslab/oom-free-alpamayo.git
 [ -d alpamayo ] || git clone -q https://github.com/NVlabs/alpamayo.git
+git -C oom-free-alpamayo checkout -q "$OOM_FREE_ALPAMAYO_COMMIT"
+git -C alpamayo checkout -q "$ALPAMAYO_COMMIT"
+echo "  oom-free-alpamayo $(git -C oom-free-alpamayo rev-parse --short HEAD), alpamayo $(git -C alpamayo rev-parse --short HEAD)"
 
 echo "=== Python packages ==="
 # flash-attn imports torch during its own build, so it must not be built in
