@@ -124,9 +124,14 @@ def run_arm(arm, phase_calls, clip, outdir: Path) -> dict | None:
             if not wait_for(sync / f"post{i}", proc):
                 break
             admitted = tenant.grow_to(demand)
-            (sync / f"go{i}").write_text(json.dumps({
+            # Written whole and then renamed into place: the worker starts
+            # reading the moment the name exists, and would otherwise read an
+            # empty file.
+            tmp = sync / f".go{i}"
+            tmp.write_text(json.dumps({
                 "held_gb": tenant.held_gb, "admitted": admitted,
                 "wait_s": time.perf_counter() - t_pre}))
+            tmp.replace(sync / f"go{i}")
     stdout, _ = proc.communicate()
     tenant.shrink_to(0)
     shutil.rmtree(sync, ignore_errors=True)
@@ -145,6 +150,9 @@ def main() -> None:
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--outdir", type=Path, default=RESULTS / "trace")
     p.add_argument("--output", type=Path, default=RESULTS / "trace_results.json")
+    p.add_argument("--rerun-failed", action="store_true",
+                   help="rerun only the runs in --output that ended in an error, "
+                        "each with its own arm, churn rate and clip, in place")
     args = p.parse_args()
     args.outdir.mkdir(parents=True, exist_ok=True)
     torch.cuda.set_device(0)
@@ -158,6 +166,23 @@ def main() -> None:
             sys.exit(f"The trace cannot discriminate on this card ({total_gb:.1f}GB) "
                      f"with these profiles: {problems}. Adjust PATTERN in "
                      f"scheduler/trace.py.")
+
+    if args.rerun_failed:
+        results = json.loads(args.output.read_text())
+        for j, old in enumerate(results["runs"]):
+            if not old.get("error"):
+                continue
+            a = old["args"]
+            arm = (a["policy"], a["placement"], a["demotion"])
+            print(f"rerun rep {old['rep'] + 1}, {arm}, L={a['phase_calls']}: {old['error']}")
+            r = run_arm(arm, int(a["phase_calls"]), old["clip_id"], args.outdir)
+            if r is not None:
+                r.update(rep=old["rep"], clip_id=old["clip_id"], position=old["position"],
+                         rerun_of_error=old["error"])
+                results["runs"][j] = r
+                args.output.write_text(json.dumps(results, indent=1))
+        print(f"Saved -> {args.output}")
+        return
 
     results = {"meta": run_metadata(args), "runs": []}
     for rep in range(args.reps):
