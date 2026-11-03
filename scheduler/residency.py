@@ -7,8 +7,10 @@ adds.
 
   copy   what the upstream pipeline does. A demoted layer is copied back to
          host memory and then pinned, because streaming needs a pinned source.
-         Pinning allocates page-locked memory, which is slow, and this is why
-         shedding a layer costs several times more than restoring one.
+         Copying to pageable host memory is slow, and pinning the copy adds
+         more (about 0.43s per eight layers on the primary RTX 3090 host),
+         which is why shedding a layer costs several times more than restoring
+         one.
 
   clean  keep a pinned host copy of every layer for the life of the process.
          Inference never writes the weights, so the device copy of a resident

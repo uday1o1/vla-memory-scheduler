@@ -1,12 +1,13 @@
-"""Full experiment runner: 6 reps x 3 scenarios x 2 methods x N calls.
+"""Experiment runner: reps (default 6) x 3 scenarios x 2 methods x N calls.
 
-Contention sensing: since DCGM's Profiling module (fine-grained SM-occupancy
-counters) fails to load in this container, and nvidia-smi's utilization.gpu
-is too coarse (see novelty-feasibility-audit.md), the adaptive policy senses contention
-from its OWN recent latency drift - a rolling window of observed call
-latencies compared against the no-contention calibration for the current K.
-This is a realistic, privilege-free signal: no real deployed system would
-assume access to hardware profiling counters either.
+Contention sensing: hardware profiling counters (DCGM) are not used, since
+they are commonly unavailable on shared cloud GPUs (scheduler/contention.py),
+and nvidia-smi's utilization.gpu is too coarse (see
+novelty-feasibility-audit.md), so the
+adaptive policy senses contention from its OWN recent latency drift - a rolling
+window of observed call latencies compared against the no-contention
+calibration for the current K. The signal needs no privileged access to
+hardware profiling counters.
 """
 from __future__ import annotations
 
@@ -118,7 +119,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--n-calls", type=int, default=100)
     p.add_argument("--reps", type=int, default=6)
-    p.add_argument("--output", type=Path, default=RESULTS / "results.json")
+    p.add_argument("--output", type=Path, default=RESULTS / "compute_contention.json")
     p.add_argument("--device", type=int, default=0)
     args = p.parse_args()
 
@@ -168,7 +169,7 @@ def main():
                        n_calls=args.n_calls)
         all_results[clip_id]["no_contention_adaptive"] = r
 
-        # Scenario 2: steady contention (separate process, 70% duty cycle, locked target)
+        # Scenario 2: steady contention (separate process, 70% duty cycle)
         for method in ("baseline", "adaptive"):
             print(f"  [steady-contention, {method}]")
             stop_flag = mp.Event()
@@ -181,7 +182,7 @@ def main():
             proc.join(timeout=5)
             all_results[clip_id][f"steady_{method}"] = r
 
-        # Scenario 3: bursty contention (Poisson, 500ms bursts, locked params)
+        # Scenario 3: bursty contention (Poisson arrivals at 0.2/s, 500ms bursts)
         for method in ("baseline", "adaptive"):
             print(f"  [bursty-contention, {method}]")
             proc = mp.Process(target=_bursty_contention_proc,

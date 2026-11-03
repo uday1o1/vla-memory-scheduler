@@ -1,10 +1,9 @@
-"""Clean measurement of actual VRAM footprint per residency level K.
+"""VRAM footprint per residency level K.
 
-Decides whether co-location (multiple VLA instances sharing one GPU at
-reduced K) is feasible - the number that determines which redesign is
-strongest. Earlier probe numbers were contaminated by allocator caching
-across successive K attempts; this measures each K from a clean state and
-runs a real inference call to capture peak, not just resident, footprint.
+Before each K the allocator cache is emptied and peak statistics reset, and a
+real inference call is run, so the figure is the peak footprint, not just the
+resident weights. It also reports whether two instances at that K would fit
+on one GPU.
 """
 from __future__ import annotations
 

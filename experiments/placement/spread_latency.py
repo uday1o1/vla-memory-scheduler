@@ -3,12 +3,13 @@
 The upstream rule spreads resident layers evenly, and the nested rule was
 built to match that spread, on the assumption that a long run of consecutive
 non-resident layers is expensive because the streaming pipeline must cover it.
-That assumption has never been tested here. It matters for two reasons: if
+This script tests that assumption. It matters for two reasons: if
 spread does not drive latency, then the nested rule being worse on spread
 costs nothing, and the upstream rule's even spacing is solving a problem that
 does not exist.
 
-The test varies spread by an order of magnitude while holding the residency
+The test varies spread by an order of magnitude (a longest non-resident run
+of 20 against 2 at K=16, 12 against 1 at K=24) while holding the residency
 count fixed, so the resident layer count, the memory footprint and the amount
 of streamed data are all identical and only the arrangement differs. A
 sequential order is the extreme: at K=16 of 36 it leaves a run of 20

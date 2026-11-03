@@ -13,8 +13,8 @@ before it. That count is the direct answer to whether migration cost makes a
 better configuration miss deadlines, and it is what the four runtime arms are
 compared on as a two-by-two ablation.
 
-Repetitions are paired by clip and compared with the Wilcoxon signed-rank
-test. With eight pairs the smallest attainable p is 0.0078, reached only when
+Repetitions are paired by repetition, each of which runs every arm on one
+clip, and compared with the Wilcoxon signed-rank test. With eight pairs the smallest attainable p is 0.0078, reached only when
 every pair moves the same way.
 """
 from __future__ import annotations
@@ -83,7 +83,7 @@ def compare(label, rows, key, a, b):
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--input", type=Path, default=Path("data/trace_results_3090.json"))
+    p.add_argument("--input", type=Path, default=Path(__file__).resolve().parents[2] / "data" / "trace_results_3090.json")
     args = p.parse_args()
     data = json.loads(args.input.read_text())
     runs = data["runs"]
@@ -130,6 +130,8 @@ def main() -> None:
                         "mean_latency_s", best, stat)
                 compare(f"both served, runtime nested clean vs {s}", rows,
                         "both_served", best, stat)
+                compare(f"both served, runtime upstream copy vs {s}", rows,
+                        "both_served", ("runtime", "upstream", "copy", L), stat)
         print("Ablation of the two fixes, misses caused by transitions:")
         rt = lambda pl, de: ("runtime", pl, de, L)  # noqa: E731
         compare("nested vs upstream placement, copy demotion", rows,
@@ -138,16 +140,29 @@ def main() -> None:
                 "transition_misses", rt("nested", "clean"), rt("nested", "copy"))
         compare("nested vs upstream placement, clean demotion", rows,
                 "transition_misses", rt("nested", "clean"), rt("upstream", "clean"))
+        compare("clean vs copy demotion, upstream placement", rows,
+                "transition_misses", rt("upstream", "clean"), rt("upstream", "copy"))
         compare("both fixes vs neither", rows, "transition_misses",
                 rt("nested", "clean"), rt("upstream", "copy"))
+        print("The same ablation on all misses:")
+        compare("nested vs upstream placement, copy demotion", rows,
+                "miss_rate", rt("nested", "copy"), rt("upstream", "copy"))
+        compare("nested vs upstream placement, clean demotion", rows,
+                "miss_rate", rt("nested", "clean"), rt("upstream", "clean"))
         print("Changing less often, under the upstream demotion mechanism:")
         compare("deadline vs runtime policy, nested copy, misses", rows, "miss_rate",
                 ("deadline", "nested", "copy", L), rt("nested", "copy"))
         compare("deadline vs runtime policy, nested copy, transition misses", rows,
                 "transition_misses", ("deadline", "nested", "copy", L), rt("nested", "copy"))
+        compare("deadline vs runtime policy, upstream copy, transition misses", rows,
+                "transition_misses", ("deadline", "upstream", "copy", L), rt("upstream", "copy"))
+        compare("deadline vs runtime policy, nested copy, mean latency", rows,
+                "mean_latency_s", ("deadline", "nested", "copy", L), rt("nested", "copy"))
         compare("deadline policy, nested vs upstream, transition misses", rows,
                 "transition_misses", ("deadline", "nested", "copy", L),
                 ("deadline", "upstream", "copy", L))
+        compare("both served, deadline nested copy vs startup", rows, "both_served",
+                ("deadline", "nested", "copy", L), next(a for a in rows if a[0] == "startup"))
         print("Same ablation on total transition seconds:")
         compare("nested vs upstream placement, copy demotion", rows,
                 "transition_s", rt("nested", "copy"), rt("upstream", "copy"))
@@ -171,6 +186,29 @@ def main() -> None:
         rs = [r for r in runs if arm_name(r) == arm]
         cells = [statistics.mean(misses(r, mid * m) for r in rs) for m in mults]
         print(f"{arm[1]:<10}{arm[2]:<9}{arm[3]:<4}" + "".join(f"{v:<8.2f}" for v in cells))
+    # The same rescoring on the joint measure for every arm except the deadline
+    # policy's, which consults the deadline. The deadline is what separates the
+    # policies, so this shows the range over which the primary comparison holds.
+    mults_all = (1.00, 1.05, 1.10, 1.15, 1.20, 1.30, 1.40, 1.50)
+    served = lambda r, d: sum(c["total_s"] is not None and c["total_s"] <= d  # noqa: E731
+                              and c["tenant_admitted"] for c in r["calls"]) / len(r["demands"])
+    print("\n=== Deadline sensitivity, all arms, fraction of calls with both served ===")
+    print(f"{'policy':<15}{'placement':<10}{'demotion':<9}{'L':<4}"
+          + "".join(f"x{m:<7.2f}" for m in mults_all))
+    for arm in sorted(a for a in rows if a[0] != "deadline"):
+        rs = [r for r in runs if arm_name(r) == arm]
+        cells = [statistics.mean(served(r, mid * m) for r in rs) for m in mults_all]
+        print(f"{arm[0]:<15}{arm[1]:<10}{arm[2]:<9}{arm[3]:<4}"
+              + "".join(f"{v:<8.3f}" for v in cells))
+    startup = next(a for a in rows if a[0] == "startup")
+    for L in churns:
+        for m in mults_all:
+            at = defaultdict(dict)
+            for r in runs:
+                at[arm_name(r)][r["rep"]] = {"b": served(r, mid * m)}
+            compare(f"x{m:.2f}, L={L}, both served, runtime nested clean vs startup", at, "b",
+                    ("runtime", "nested", "clean", L), startup)
+
     for L in churns:
         for m in (1.05, 1.10):
             tight = defaultdict(dict)
@@ -213,6 +251,32 @@ def main() -> None:
         if first and rest:
             print(f"\nstatic_fast median inference when run first {statistics.mean(first):.3f}s, "
                   f"otherwise {statistics.mean(rest):.3f}s")
+
+    # Slow-pipeline check: a rebuild that lands on a slow prefetch stream
+    # stays slow until the next rebuild, so it would show as a whole stretch
+    # between residency changes running above that clip and K's usual latency.
+    stretches = []
+    for r in runs:
+        cur, key = [], None
+        for c in r["calls"]:
+            if c["inference_s"] is None:
+                continue
+            if c["switched_from"] or key is None or c["k"] != key[1]:
+                if cur:
+                    stretches.append((key, cur))
+                cur, key = [], (r["clip_id"], c["k"])
+                if c["switched_from"]:
+                    continue  # the call that carries the change is not steady
+            cur.append(c["inference_s"])
+        if cur:
+            stretches.append((key, cur))
+    pooled = defaultdict(list)
+    for key, times in stretches:
+        pooled[key] += times
+    excess = [statistics.median(t) / statistics.median(pooled[k]) - 1 for k, t in stretches]
+    print(f"\nStretches between residency changes: {len(stretches)}, "
+          f"{sum(e > 0.08 for e in excess)} more than 8% above their clip-and-K median, "
+          f"largest {100 * max(excess):.2f}%")
 
 
 if __name__ == "__main__":

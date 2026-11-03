@@ -4,11 +4,14 @@ without a GPU.
     python experiments/placement/bench_analyze.py
     python experiments/placement/bench_analyze.py --dir results   # a fresh run
 
-For every run of benchmark.py: the mean transition time of each placement at
-each adaptation granularity, its speedup and the layers each moved; and the
+For every committed placement run: the mean transition time of each placement
+at each step size, its speedup and the layers each moved; and the
 steady-state latency difference, nested against upstream, at each residency
 level. Runs at --max-k 14 follow the same adaptation paths on every machine,
-so their move counts match and their speedups can be compared. Latency on
+so their move counts match and their speedups can be compared.
+placement_bench_3090.json and placement_bench_4090.json follow other paths
+(their move counts differ), so their speedups are not comparable with the
+--max-k 14 runs. Latency on
 one RTX 3090 depends on which placement is measured first, so where a run in
 the other order exists the two are also averaged.
 """
@@ -21,6 +24,8 @@ from pathlib import Path
 
 DATA = Path(__file__).resolve().parents[2] / "data"
 # Runs of the same paths in the opposite order: (first measured upstream, nested).
+# The RTX 4090 pair differs in latency settings: the upstream-first run records
+# 3 reps and no warmup setting, the nested-first run 5 reps and 3 warmup passes.
 BOTH_ORDERS = [("placement_bench_3090new_k14.json", "placement_bench_3090new_swapped.json"),
                ("placement_bench_4090_k14.json", "placement_bench_4090_k14_nestedfirst.json"),
                ("placement_bench.json", "placement_bench_nestedfirst.json")]  # reproduce.sh
@@ -35,7 +40,7 @@ def main() -> None:
     p.add_argument("--dir", type=Path, default=DATA)
     args = p.parse_args()
     runs = {f.name: json.loads(f.read_text()) for f in sorted(args.dir.glob("placement_bench*.json"))}
-    print(f"{'run':<36}{'|dK|':>5}  " + "".join(f"{g:>12}" for g in ("1", "2", "3", "5", "8", "12")))
+    print(f"{'run':<36}{'step':>5}  " + "".join(f"{g:>12}" for g in ("1", "2", "3", "5", "8", "12")))
     for name, d in runs.items():
         t = d["transition"]
         print(f"{name[15:-5].lstrip('_') or 'this run':<36}{'x':>5}  "

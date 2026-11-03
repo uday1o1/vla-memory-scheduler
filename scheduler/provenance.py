@@ -1,9 +1,9 @@
-"""Environment captured alongside every result.
+"""Environment captured alongside each result.
 
 Results are compared across GPUs, so a result that does not record which GPU
-produced it cannot be placed in that comparison afterwards. Every run records
-its own hardware rather than relying on the filename or on notes kept
-elsewhere.
+produced it cannot be placed in that comparison afterwards. Each run that
+calls run_metadata records its own hardware rather than relying on the
+filename or on notes kept elsewhere.
 """
 from __future__ import annotations
 

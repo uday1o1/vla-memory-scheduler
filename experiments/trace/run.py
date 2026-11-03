@@ -1,11 +1,10 @@
 """Static residency against profile switching, under a tenant whose memory
 demand changes, with deadline-miss rate as the measure.
 
-This is the comparison the project was asked to make, run where it can
-discriminate. The driver plays a co-located tenant: before each call of the
-driving model it gives the tenant its demand from the trace, by allocating
-real device memory in half-gigabyte chunks, and the allocation succeeding is
-what admits it. The driving model runs in a separate worker process and
+This is the primary comparison, run where it can discriminate. The driver
+plays a co-located tenant: before each call of the driving model it gives the
+tenant its demand from the trace, by allocating real device memory in
+half-gigabyte chunks, and the allocation succeeding is what admits it. The driving model runs in a separate worker process and
 responds according to its policy (scheduler/trace.py).
 
 Arms, each a fresh process, in an order shuffled per repetition:

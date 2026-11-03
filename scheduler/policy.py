@@ -1,12 +1,17 @@
-"""Algorithm 1.2: deadline-and-contention-aware residency policy.
+"""Deadline-and-contention-aware continuous-K residency controller.
 
 Decision cost (cheap): pick target K from an empirical latency(K) calibration
 table, adjusted for sensed GPU contention.
 
-Transition cost (expensive, measured separately - see experiments/placement/transition_cost.py):
-shedding layers costs 3-6x more than restoring them (pin_memory() on offload
-vs. plain device copy on restore). Hysteresis exists specifically to avoid
-paying this cost on every call when it isn't justified by real deadline risk.
+Transition cost (expensive, measured separately by
+experiments/placement/eviction.py): shedding layers costs about six times more
+than restoring the same number (roughly 0.30s against 0.05s per layer on the
+primary RTX 3090 host, data/eviction_copy_nested_3090.json), because a shed
+layer is copied back to pageable host memory and then pinned, while a restored
+layer is one copy from memory already pinned. The copy to pageable memory is
+the main cost; pinning adds about 0.43s per eight layers.
+Hysteresis exists to avoid paying this cost on every call when it is not
+justified by real deadline risk.
 """
 from __future__ import annotations
 
@@ -48,6 +53,11 @@ class Calibration:
         return max_k
 
 
+# Mean latency per K on an RTX 3090 whose host is not recorded: the table
+# experiments/contention/run.py uses. At K=16, 24 and 33 these are the values
+# DEFAULT_PROFILES in scheduler/profiles.py rounds to two decimals.
+# The primary host's calibration, data/calibration_3090.json, agrees within
+# 4.4 percent (largest gap at K=33, 6.730s against 7.022s).
 CALIBRATION = Calibration(
     k_values=[0, 8, 16, 24, 30, 33],
     latencies_s=[26.866, 21.905, 17.063, 12.312, 8.761, 7.022],
@@ -77,15 +87,17 @@ def decide_residency(
     from the clean calibration table, which cannot see real contention
     effects. It also derives an empirical contention factor
     (observed / calibration.latency_at(current_k)) used to project what
-    OTHER K values would achieve under the same slowdown, assuming it
-    applies uniformly across K (confirmed by experiments/contention/interaction.py).
+    OTHER K values would achieve under the same slowdown, assuming the same
+    factor at every K. experiments/contention/interaction.py finds instead a
+    roughly constant added time (about two seconds at K=16, 24 and 33), so
+    the projection overstates the slowdown at low K.
     Falls back to the clean calibration when not yet available (e.g. the
     first few calls before a rolling window fills).
 
     Both the miss-check and the projection are grounded in observed latency
     rather than a fixed multiplier, because contention slowdown is not known
-    ahead of time: a sustained slowdown near 32 percent was measured, which
-    any static estimate would have to guess at.
+    ahead of time: sustained slowdowns of 31 and 32 percent were measured on
+    two clips, which any static estimate would have to guess at.
 
     Hysteresis: only actually change K if the ideal target differs from the
     current K by more than `hysteresis_layers`, OR if staying at current_k
@@ -122,18 +134,20 @@ def demo():
     assert k == 33, f"expected no change at K=33 under low contention, got {k}"
     print(f"Low contention, ample budget -> K={k} (unchanged, as expected)")
 
-    # Real observed contention from Rep 1 data: ~32% slowdown (6.943s -> 9.157s
-    # under steady contention). Even K=33's clean latency (7.022s) can't beat
-    # the resulting effective deadline (~6.12s), so min_k_for_deadline falls
-    # back to max_k, and the deadline-miss override correctly fires - the
-    # policy detects the real miss even though residency can't fix it (a
-    # genuine finding: uniform-across-K contention has no residency-based
-    # escape, confirmed by experiments/contention/interaction.py).
-    real_observed_latency = 9.157
+    # Measured contention on clip d497f01b (data/compute_contention_3090.json):
+    # 7.008s -> 9.155s mean latency at K=33 under steady contention, a 31%
+    # slowdown. Against the calibrated K=33 latency (7.022s) the factor puts
+    # the effective deadline (~6.19s) below every K's clean latency, so
+    # min_k_for_deadline falls back to max_k and the deadline-miss override
+    # fires: the policy detects the miss even though residency cannot fix it.
+    # Compute contention adds roughly the same time at every K
+    # (experiments/contention/interaction.py), so no residency level escapes it.
+    real_observed_latency = 9.155
     k = decide_residency(state, deadline_s=deadline, gpu_util=0.8,
                           observed_recent_latency=real_observed_latency)
     assert k == 33, f"expected fallback to max_k when no K can meet effective deadline, got {k}"
-    print(f"Real contention factor (1.319x, from Rep 1 data) -> K={k} (miss correctly detected, no K can escape it)")
+    print(f"Real contention factor ({real_observed_latency / cal.latency_at(33):.3f}x) -> K={k} "
+          "(miss correctly detected, no K can escape it)")
 
     tight_deadline = cal.latency_at(16)
     state2 = PolicyState(current_k=33, max_k=33)
@@ -141,7 +155,7 @@ def demo():
     print(f"Deadline tight enough to require K=16 -> K={k}")
     assert k == 16, f"expected exact min-K for this deadline, got {k}"
 
-    # K=30 is only 3 layers off the ideal (32), within hysteresis_layers, but
+    # K=30 is only 2 layers off the ideal (32), within hysteresis_layers, but
     # its OWN latency (8.761s) already exceeds the 8.075s deadline - the
     # override must fire regardless of the small layer-count delta.
     state3 = PolicyState(current_k=30, max_k=33)

@@ -48,7 +48,8 @@ def main():
     p.add_argument("--n-calls", type=int, default=30)
     p.add_argument("--clip-id", required=True)
     p.add_argument("--release-after", type=int, default=10,
-                   help="call index at which the external pressure is released")
+                   help="nominal call index of the pressure release, recorded only; "
+                        "the driver releases on a timer (run.py RELEASE_AFTER_S)")
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--marker", type=Path, default=None,
                    help="touched once timed calls begin, so the driver can time "

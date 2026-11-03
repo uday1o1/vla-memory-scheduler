@@ -10,7 +10,7 @@ and |A intersect B| <= min(K, K'), giving
 
     |A delta B| >= K + K' - 2 min(K, K') = |K' - K|
 
-with equality exactly when A intersect B = min(K, K'), i.e. when one set
+with equality exactly when |A intersect B| = min(K, K'), i.e. when one set
 contains the other. A placement family is nested precisely when that holds
 for every pair, so nested families achieve the lower bound on every
 transition and non-nested families strictly exceed it on at least one.

@@ -8,12 +8,11 @@ GEMM at a fixed duty cycle (scheduler/contention.py). Each repetition times
 calls with and without it, alternating which comes first so that neither
 condition always follows the other, and every call is kept.
 
-The earlier measurement ran the two processes under CUDA MPS, so that their
-kernels share the GPU concurrently rather than by time-slicing. Start it first
-to match (as root: nvidia-cuda-mps-control -d); whether it was running is
-recorded in the output.
+Run the two processes under CUDA MPS, so that their kernels share the GPU
+concurrently rather than by time-slicing. Start it first (as root:
+nvidia-cuda-mps-control -d); whether it was running is recorded in the output.
 
-    python experiments/contention/interaction.py --reps 5
+    python experiments/contention/interaction.py --reps 8   # as for data/compute_interaction_3090.json
 """
 from __future__ import annotations
 

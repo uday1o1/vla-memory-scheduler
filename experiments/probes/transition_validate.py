@@ -1,8 +1,7 @@
-"""Validate that inference actually works AFTER a residency transition.
+"""Validate that inference works AFTER a residency transition.
 
-This path was never exercised: in the real run the adaptive arm never
-changed K (hysteresis held it), so a post-transition inference call has
-never been proven to work. A probe hit a device-mismatch error here.
+Runs a residency transition in both directions, with an inference call after
+each.
 
 Also checks whether interleaved_placement sets are nested across K, since
 a non-nested placement means a transition must move layers in BOTH
@@ -118,7 +117,7 @@ def main():
 
             t0 = time.perf_counter()
             run_call(pipe)
-            print(f"  K->{target_k}: transition + call OK ({time.perf_counter()-t0:.3f}s)")
+            print(f"  K->{target_k}: transition OK, call {time.perf_counter()-t0:.3f}s")
         except Exception as e:
             print(f"  K->{target_k}: FAILED {type(e).__name__}: {str(e)[:160]}")
             all_ok = False

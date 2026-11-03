@@ -1,23 +1,28 @@
 """What does demoting a layer cost, and does clean eviction remove it?
 
-Shedding resident layers has been measured at about twenty times the cost of
-restoring the same number, 5.71s against 0.28s for eight layers on the RTX
-3090. The upstream pipeline demotes a layer by copying it to host memory and
-then pinning it, and pinning allocates page-locked memory. Inference never
-writes the weights, so a pinned host copy kept from the start would make the
-device copy redundant and demotion a matter of dropping it.
+On the second RTX 3090 host, shedding eight resident layers took about twenty
+times as long as restoring them when the pipeline rebuild is included, 5.41 to
+5.81s against 0.28s (data/adaptive_cost_3090.json); on the primary host this script
+measures 5.7 to 6.7 times (data/eviction_copy_nested*_3090.json). The upstream
+pipeline demotes a layer by copying it to host memory and then pinning it, and
+pinning allocates page-locked memory. Inference never writes the weights, so a
+pinned host copy kept from the start would make the device copy redundant and
+demotion a matter of dropping it.
 
-This measures both mechanisms on the same cycle of residency changes,
-covering demotion and promotion at two sizes each. The first cycle is
-discarded so that no measured transition carries one-time costs. After every
-transition one inference call is timed and its trajectory kept, so that the
-outputs of the two mechanisms, and of every residency level, can be compared
-element by element: a faster mechanism that changed the output would not be
-an optimization.
+This measures both mechanisms on the same cycle of residency changes, covering
+demotion and promotion at three sizes each (8, 9 and 17 layers). The first
+cycle is discarded so that no measured transition carries one-time costs.
+After every transition one inference call is timed, and the first trajectory
+at each residency level is kept, so that the outputs of the two mechanisms,
+and of every residency level, can be compared element by element: a faster
+mechanism that changed the output would not be an optimization.
 
 Run once per mechanism, in both orders, since processes are compared:
-    python experiments/placement/eviction.py --demotion copy
-    python experiments/placement/eviction.py --demotion clean
+    VLA_RESULTS=results python experiments/placement/eviction.py --demotion copy
+    VLA_RESULTS=results python experiments/placement/eviction.py --demotion clean
+    python experiments/placement/eviction.py --demotion clean --output results/eviction_clean_nested_order2.json
+    python experiments/placement/eviction.py --demotion copy --output results/eviction_copy_nested_order2.json
+then: python experiments/placement/eviction_analyze.py --dir results --suffix ""
 """
 from __future__ import annotations
 

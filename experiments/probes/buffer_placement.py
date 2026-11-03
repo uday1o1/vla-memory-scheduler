@@ -1,9 +1,12 @@
 """Does where the staging buffers land decide the slow state?
 
 Rebuilding the streaming pipeline, while moving no layers and changing no
-residency, leaves inference about thirteen percent slower for a stretch, and
-does so on roughly one rebuild in five. Residency change is therefore not the
-cause. Reconstruction is, and reconstruction does one thing that matters to
+residency, leaves inference 11 to 13 percent slower for a stretch, and does so
+on roughly one rebuild in four (14 of 50 rebuilds, not counting each run's
+first build, 22 to 31 percent per run, across data/rebuild_only_3090.json,
+buffer_placement2_3090.json, stream_identity_3090.json and
+iso_events_3090.json). A residency change is therefore not needed to cause it.
+Reconstruction is enough, and reconstruction does one thing that matters to
 the hot path: it allocates two staging buffers on the device, each sized for
 the largest streamed layer, through which every prefetched layer passes.
 
@@ -56,7 +59,7 @@ def buffer_facts(pipe) -> list[dict]:
     facts = []
     seen = set()
     # TriHookPipeline holds three DoubleBufHook instances, named for the
-    # three streamed module groups, each with its own pair of staging buffers.
+    # three streamed module groups, which share one pair of staging buffers.
     for attr in ("vlm_hook", "vis_hook", "exp_hook"):
         h = getattr(pipe, attr, None)
         if h is None:
@@ -70,7 +73,8 @@ def buffer_facts(pipe) -> list[dict]:
                 st = getattr(h, "prefetch_stream", None)
                 facts.append({
                     "hook": attr,
-                    # The stream is what carries the cost, so record which one
+                    # Carrying the stream across rebuilds removed the slow
+                    # state (data/iso_stream_3090.json), so record which one
                     # this rebuild got. If the slow state follows particular
                     # stream identities, a pool is cycling and some slots are
                     # slower; if identities are unique every time, it does not.

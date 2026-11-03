@@ -85,7 +85,8 @@ def choose(policy: str, budget: float, current: Profile | None,
 
 def tenant_fits(total_gb: float, held_gb: float, demand_gb: float,
                 safety_gb: float) -> bool:
-    """What the orchestrator expects. The GPU worker checks it by allocating."""
+    """What the orchestrator expects. The GPU driver (experiments/trace/run.py)
+    checks it by allocating."""
     return demand_gb == 0 or held_gb + demand_gb + safety_gb <= total_gb
 
 

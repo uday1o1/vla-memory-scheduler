@@ -1,23 +1,22 @@
 """Does this machine hold one inference speed, or flip between two?
 
-Several effects measured on one RTX 3090 were attributed to residency
-transitions: that arriving at a level by shedding costs about thirteen
-percent, that the cost does not decay, and that it does not scale with pinned
-allocations. The last measurement undermined all of them. The same transition,
-from K=30 to K=16, measured twice in one session, gave no penalty the first
-time and 12.06 percent the second.
+Effects measured on one RTX 3090 after residency transitions (13.49 percent
+slower after shedding, no decay, no scaling with new pins) could also arise
+if the machine flips between two speeds: the same K=30 -> 16 transition,
+measured twice in one run, gave -0.001 percent and 12.06 percent
+(data/pinning_scaling_3090.json).
 
 Two measurements of one transition cannot differ by that much if the
 transition is what sets the speed. The alternative is that the machine settles
-into one of two speeds for stretches at a time, and that every experiment so
-far has been reading which state it happened to be in rather than the effect
-of whatever was being varied.
+into one of two speeds for stretches at a time, and an experiment reads which
+state it happened to be in rather than the effect of whatever was being
+varied.
 
 This changes nothing and measures repeatedly. One residency level, one clip,
 no transitions, no placement changes: blocks of calls separated by short
 pauses, each block summarized on its own. A machine with one speed produces
-one cluster. A machine with two produces two, and then the attributions made
-earlier are artifacts of sampling whichever state was current.
+one cluster. A machine with two produces two, and effects attributed to
+transitions are then artifacts of sampling whichever state was current.
 """
 from __future__ import annotations
 
@@ -115,7 +114,7 @@ def main() -> None:
         if args.rebuild_only and b > 0:
             # Identical residency before and after. The only thing that
             # happens is that the pipeline object is discarded and built
-            # again, which is what every earlier transition also did.
+            # again, which is what every transition also does.
             pipe.remove()
             del pipe
             _gc.collect()
@@ -176,8 +175,8 @@ def main() -> None:
         print("  so measurements here are unreliable at that scale whatever the")
         print("  shape of the variation.")
     else:
-        print("  One cluster. The machine holds a single speed, so the variation")
-        print("  seen earlier came from what was being changed, not from drift.")
+        print("  One cluster. The machine holds a single speed, so variation in")
+        print("  other runs came from what was being changed, not from drift.")
     print(f"\nSaved -> {args.output}")
 
 

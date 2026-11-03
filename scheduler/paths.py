@@ -43,6 +43,7 @@ R1_CONFIG = UPSTREAM / "r1_config.json"
 # Where experiment runs write their JSON. Override with VLA_RESULTS to keep a
 # run's output outside the repository.
 RESULTS = Path(os.environ.get("VLA_RESULTS") or (REPO_ROOT / "data"))
+RESULTS.mkdir(parents=True, exist_ok=True)
 
 
 def bootstrap() -> None:

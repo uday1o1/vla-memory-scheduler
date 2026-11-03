@@ -6,8 +6,8 @@ trajectories. That is the expectation, not a measurement, until it is
 checked. A performance optimization that silently changes outputs is not a
 performance optimization.
 
-Compares predicted trajectories element-wise at several residency levels and
-across clips, including the K=0 fully-streamed case as a control.
+Compares predicted trajectories element-wise at three residency levels (16, 24,
+33) and three clips.
 """
 from __future__ import annotations
 

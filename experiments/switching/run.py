@@ -1,4 +1,4 @@
-"""Primary experiment: static residency versus contention-aware profile switching.
+"""Static residency versus profile switching under fixed memory pressure.
 
 Deadline-miss rate is the headline metric, under a controlled competing GPU
 workload.
@@ -101,8 +101,8 @@ def main():
     torch.cuda.set_device(0)
     d = deadline_s()
     print(f"Deadline {d:.3f}s, anchored to the middle profile so that it separates")
-    print("the profiles. Anchoring to the fastest profile is what made the earlier")
-    print("design untestable: every other profile then misses by construction.")
+    print("the profiles: anchored to the fastest, every other profile would miss")
+    print("by construction.")
     for pr in PROFILES:
         print(f"  {pr}  {'meets' if pr.latency_s <= d else 'MISSES'}")
     print()

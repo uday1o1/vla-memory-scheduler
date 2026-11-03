@@ -1,11 +1,13 @@
 """Is the measurement-order penalty caused by GPU clocks ramping?
 
-On a host that caps the card below its rated power and denies clock locking,
-the arm measured first in an A/B latency comparison runs about 2.4 seconds
-slower, and three warmup passes do not absorb it. Clock ramp is the natural
+On one RTX 3090 host, after a run of residency changes, the arm measured first
+in an A/B latency comparison runs 1.9 to 3.0 seconds slower on half of the clip
+and residency-level pairs (18 of 36, data/placement_bench_3090new_k14.json,
+data/placement_bench_3090new_swapped.json), and three warmup passes do not
+absorb it. Clock ramp is the natural
 explanation: the first block of work runs while the card is still climbing out
-of its idle state, and the second runs at sustained clocks. That explanation
-has been asserted but not checked.
+of its idle state, and the second runs at sustained clocks. This probe checks
+that explanation.
 
 This samples the SM clock and power draw in a background thread while running
 the same two-arm comparison, so the clocks during each measurement block can
@@ -13,8 +15,8 @@ be read off directly. If the first block runs at a markedly lower clock than
 the second, the explanation holds. If the clocks are the same, it does not and
 the penalty has another cause.
 
-Run on the machine that exhibits the penalty. A card that is not power capped
-is expected to show flat clocks and no penalty, which is the control.
+Run on the machine that exhibits the penalty. --preheat performs residency
+changes before the comparison; a run without it is the control.
 """
 from __future__ import annotations
 
@@ -50,7 +52,7 @@ CLIP = "d497f01b-4f68-4c27-9a6c-55872a1d6bd6"
 
 
 class ClockSampler(threading.Thread):
-    """Samples SM clock, power and throttle state until told to stop."""
+    """Samples SM clock and power draw until told to stop."""
 
     def __init__(self, interval: float = 0.25):
         super().__init__(daemon=True)

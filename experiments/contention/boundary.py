@@ -1,10 +1,10 @@
-"""The compute-contention boundary, retested against the proposed policy.
+"""The compute-contention boundary, measured with the profile-switching policy.
 
 experiments/contention/run.py measures compute contention with the
 continuous-K controller in scheduler/policy.py. A boundary claim should hold
 for the profile-switching policy as well, so this repeats it with switching.
 
-The expectation, stated before running: compute contention does not change how
+The expectation: compute contention does not change how
 much GPU memory is free, so the switching policy will select the same profile
 as the static policy and behave identically. If that holds, it establishes the
 boundary cleanly, that residency selection is a memory-domain lever and has no
@@ -52,8 +52,9 @@ def main():
     args.outdir.mkdir(parents=True, exist_ok=True)
 
     print(f"Deadline {deadline_s():.3f}s. Steady compute contention at "
-          f"{args.duty_cycle:.0%} duty cycle, independent process under CUDA MPS.\n")
-    print("Expectation stated in advance: compute contention leaves free memory")
+          f"{args.duty_cycle:.0%} duty cycle, independent process (sharing through "
+          f"CUDA MPS if its daemon was started).\n")
+    print("Expectation: compute contention leaves free memory")
     print("unchanged, so switching should select the same profile as static and")
     print("behave identically, establishing the boundary.\n")
 
@@ -61,8 +62,9 @@ def main():
     for policy in ("static", "switching"):
         out = args.outdir / f"compute_{policy}.json"
 
-        # Contention runs as an independent process sharing the GPU through MPS,
-        # started before the model process and killed after it finishes.
+        # Contention runs as an independent process (sharing the GPU through MPS
+        # if its daemon was started), started before the model process and
+        # killed after it finishes.
         cont = subprocess.Popen(
             [PY, CONTENTION, "--mode", "steady", "--duty-cycle", str(args.duty_cycle),
              "--duration", "36000"],

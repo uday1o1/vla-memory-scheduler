@@ -1,16 +1,18 @@
 """Can the trace experiment tell its arms apart? A check run before the GPU.
 
 The GPU experiment takes hours, so before running it this asks whether its
-design can produce a difference at all, using costs measured earlier rather
-than new measurements. It replays the same trace and the same policy
+design can produce a difference at all, using committed measurements rather
+than new ones. It replays the same trace and the same policy
 decisions the GPU worker makes (scheduler/trace.py), charging each call its
 profile's measured latency plus the cost of any residency change before it.
 
-Per-move costs come from the committed RTX 3090 measurements in
-data/adaptive_cost_3090.json: with the upstream demotion mechanism, demoting
-eight layers took 5.71s and promoting eight took 0.28s. Demotion with clean
-eviction has not been measured; its cost is set to zero here as the
-hypothesis under test, and experiments/placement/eviction.py measures it.
+Per-move costs come from the committed measurements of the second RTX 3090
+host in data/adaptive_cost_3090.json: with the upstream demotion mechanism,
+demoting eight layers took 5.41 to 5.81s (5.71s, the first, is charged here)
+and promoting eight took 0.28s. Demotion
+with a kept host copy is charged zero here, an optimistic bound;
+experiments/placement/eviction.py measures it at roughly 0.3s per demotion of
+8 to 17 layers (data/eviction_clean_nested_3090.json).
 
 Nothing printed here is a result. It is a design check: if two arms come out
 identical under these costs, the GPU run cannot separate them either.

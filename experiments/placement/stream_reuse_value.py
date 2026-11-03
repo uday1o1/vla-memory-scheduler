@@ -1,10 +1,12 @@
 """What does sharing the prefetch stream change for a policy that switches?
 
 Reconstructing the streaming pipeline draws a new prefetch stream, and on one
-machine that stream is intermittently slower, costing about thirteen percent
-for as long as the pipeline lives. Carrying the stream across reconstructions
-removes it. That is established by repeating reconstruction many times at one
-setting.
+machine that stream is intermittently slower, costing 11 to 13 percent for as
+long as the pipeline lives. In repeated rebuilds at one level, carrying the
+stream across reconstructions removed it (data/iso_stream_3090.json). Whether
+that carries over to a policy that switches is this script's question; on the
+second RTX 3090 host it did not (data/stream_reuse_value_3090.json: 4 of 8
+shared-stream trials slow, 0 of 8 rebuilt).
 
 What follows for a policy is a separate question, and the obvious way to ask
 it fails. Crossing the setting with something else and running each cell once

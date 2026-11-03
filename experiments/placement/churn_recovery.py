@@ -2,9 +2,10 @@
 
 The direct cost of changing residency is the time to move layers, which is
 measured elsewhere. This measures what happens afterwards. A block of twelve
-residency changes was found to leave the next sustained inference about
-thirteen percent slower regardless of which placement rule was in use, so the
-change is still being paid for after the layers have stopped moving.
+residency changes leaves the next sustained inference 12.4 to 12.9 percent
+slower whichever placement rule is measured first
+(data/clock_ramp_preheat_3090.json, data/clock_ramp_preheat_nf_3090.json), so
+the change is still being paid for after the layers have stopped moving.
 
 That matters for the question of whether adaptivity pays for itself. An
 adaptive policy generates residency changes by design, and if each one is

@@ -45,7 +45,7 @@ def order_sequential(total: int = TOTAL) -> list[int]:
 
 
 def order_stride(total: int = TOTAL) -> list[int]:
-    """Repeated halving of a stride: 0, then every 16th, every 8th, and so on.
+    """Repeated halving of a stride: 0, then every 32nd, every 16th, every 8th, and so on.
 
     About as simple as a spread-aware nested order gets.
     """
@@ -179,7 +179,8 @@ def main() -> None:
         print("  Bisection is not uniquely necessary; any rule in this set would do,")
         print("  and the contribution is nestedness plus a spread-aware order.")
     else:
-        print(f"  Bisection is NOT best. {best} beats it, so the rule should change.")
+        print(f"  Bisection is not best on mean spread: {best} is lower. Move count is")
+        print("  the same for every nested order.")
 
 
 if __name__ == "__main__":

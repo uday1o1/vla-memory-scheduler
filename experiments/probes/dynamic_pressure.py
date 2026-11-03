@@ -1,7 +1,7 @@
 """Does mid-run shedding actually rescue a call when pressure arrives late?
 
-Probe C established that a low K can LOAD under pre-existing pressure.
-The real experimental path is different: already running at K=33, pressure
+experiments/probes/memory_pressure.py (question B) tests whether a low K can
+LOAD under pre-existing pressure. The experimental path here is different: already running at K=33, pressure
 arrives, and the policy must shed in time to complete the next call.
 PyTorch's caching allocator could behave differently in that order.
 """

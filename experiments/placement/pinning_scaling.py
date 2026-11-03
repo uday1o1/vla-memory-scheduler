@@ -1,7 +1,9 @@
 """Does the residue scale with newly pinned layers, rather than with shedding?
 
-A residency change was found to leave inference slower at the level it arrives
-at, but only when shedding layers, not when restoring them. Reading the
+In one run, a residency change left inference slower at the level it arrived
+at after shedding layers but not after restoring them
+(data/transition_residue_3090.json: +13.49% after shedding, -0.03% after
+restoring). Reading the
 upstream streaming path explains why that asymmetry is not about shedding as
 such.
 
@@ -11,8 +13,7 @@ pinned source. The pinning routine pins any non-resident layer that is not
 already pinned. A lower residency level has more non-resident layers, so
 moving down requires fresh pinned allocations while moving up requires none:
 the set needed after restoring is a subset of the set already pinned. Shedding
-and pinning are therefore confounded in the earlier measurement, and shedding
-is the wrong name for the cause.
+and pinning are therefore confounded in a plain transition measurement.
 
 The prediction that separates them is quantitative. If fresh pinned
 allocations are what cost, the residue should grow with how many layers must
@@ -156,8 +157,8 @@ def main() -> None:
         print(f"{start:<9}{before:<14}{after:<13}{new_pins:<11}{med:<12.3f}{pct:+.2f}%")
         p1.remove(); del p1; gc.collect()
 
-    # A repeat of the largest move, which should need no new pins the second
-    # time if pinning is what costs.
+    # A repeat of the largest move, which needs the same new pins again, to
+    # check whether the result is stable.
     big = max(args.from_levels)
     print(f"\n=== repeat K={big} -> K={args.target}, second time ===")
     p0 = place(big); run_once(p0); before = pinned_count()

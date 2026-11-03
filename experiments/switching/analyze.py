@@ -6,10 +6,10 @@ never produces a trajectory misses every deadline, but it is a different
 failure from one that produces trajectories too slowly, and collapsing them
 would hide which is happening.
 
-The paired Wilcoxon signed-rank test from the original proposal is applied per
-pressure level across repetitions. Where every paired difference is zero the
-test is not reported, since a test on identical arms carries no information;
-that case is stated plainly instead.
+The paired Wilcoxon signed-rank test is applied per pressure level across
+repetitions. Where every paired difference is zero the test is not reported,
+since a test on identical arms carries no information; that case is stated
+plainly instead.
 """
 from __future__ import annotations
 
@@ -19,24 +19,23 @@ import statistics
 from collections import defaultdict
 from pathlib import Path
 
-from scipy.stats import wilcoxon
+from scipy.stats import rankdata, wilcoxon
 
 
 def rank_biserial(a: list[float], b: list[float]) -> float:
-    """Matched-pairs rank-biserial correlation, the effect size the proposal named."""
+    """Matched-pairs rank-biserial correlation, ties given their mean rank."""
     diffs = [x - y for x, y in zip(a, b) if x != y]
     if not diffs:
         return 0.0
-    ranked = sorted(diffs, key=abs)
-    pos = sum(i + 1 for i, d in enumerate(ranked) if d > 0)
-    neg = sum(i + 1 for i, d in enumerate(ranked) if d < 0)
-    total = pos + neg
-    return (pos - neg) / total if total else 0.0
+    ranks = rankdata([abs(d) for d in diffs])
+    pos = sum(r for r, d in zip(ranks, diffs) if d > 0)
+    neg = sum(r for r, d in zip(ranks, diffs) if d < 0)
+    return (pos - neg) / (pos + neg)
 
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--input", type=Path, default=Path("data/switch_results_3090.json"))
+    p.add_argument("--input", type=Path, default=Path(__file__).resolve().parents[2] / "data" / "switch_results_3090.json")
     args = p.parse_args()
 
     records = json.loads(args.input.read_text())

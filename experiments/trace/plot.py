@@ -1,13 +1,13 @@
 """Figures for the trace experiment, and an animation of one run for the demo.
 
     python experiments/trace/plot.py                    # figures/trace_*.png
-    python experiments/trace/plot.py --animate out.mp4  # needs ffmpeg
+    python experiments/trace/plot.py --animate out.mp4  # also the PNGs; needs ffmpeg
 
-The timeline shows one repetition call by call: the tenant's demand, the
-residency each arm chose, and each call's latency with the residency change
-charged to it, against the deadline. The three arms shown are the deployed
-system (evenly spaced placement, copy demotion), an Oneiros-style controller
-(evenly spaced placement, host copy kept) and nested placement with a host
+The timeline shows one repetition call by call: the tenant's demand, and
+each call's latency with the residency change charged to it, against the
+deadline. The three arms shown are the upstream
+mechanisms (evenly spaced placement, copy demotion), evenly spaced placement
+with a host copy kept, and nested placement with a host
 copy kept. The bar chart counts misses caused by a residency change for every
 switching arm, and the sensitivity figure scores the four runtime arms against
 deadlines other than the one fixed before the run.
@@ -27,15 +27,15 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 SHOWN = {
-    ("runtime", "upstream", "copy"): ("Deployed: evenly spaced, copy back", "#b5452f"),
-    ("runtime", "upstream", "clean"): ("Oneiros-style: evenly spaced, host copy", "#d9a520"),
+    ("runtime", "upstream", "copy"): ("Upstream mechanisms: evenly spaced, copy back", "#b5452f"),
+    ("runtime", "upstream", "clean"): ("Evenly spaced, host copy", "#d9a520"),
     ("runtime", "nested", "clean"): ("Nested, host copy", "#2f6db5"),
 }
 
 RUNTIME_ARMS = {
-    ("runtime", "upstream", "copy"): ("evenly spaced, copy back (deployed)", "#b5452f"),
+    ("runtime", "upstream", "copy"): ("evenly spaced, copy back (upstream mechanisms)", "#b5452f"),
     ("runtime", "nested", "copy"): ("nested, copy back", "#e08a6e"),
-    ("runtime", "upstream", "clean"): ("evenly spaced, host copy (Oneiros-style)", "#d9a520"),
+    ("runtime", "upstream", "clean"): ("evenly spaced, host copy", "#d9a520"),
     ("runtime", "nested", "clean"): ("nested, host copy", "#2f6db5"),
 }
 
@@ -70,12 +70,12 @@ def timeline(runs, phase_calls, rep, ax_top, ax_bot, upto=None):
     ax_bot.legend(fontsize=7, loc="upper right")
 
 
-# The two-by-two first, deployed system to both corrections, then the policy
+# The two-by-two first, upstream mechanisms to both corrections, then the policy
 # that changes less often.
 BAR_ORDER = [
-    (("runtime", "upstream", "copy"), "deployed\nevenly spaced\ncopy back"),
+    (("runtime", "upstream", "copy"), "upstream mechanisms\nevenly spaced\ncopy back"),
     (("runtime", "nested", "copy"), "nested\ncopy back"),
-    (("runtime", "upstream", "clean"), "Oneiros-style\nevenly spaced\nhost copy"),
+    (("runtime", "upstream", "clean"), "evenly spaced\nhost copy"),
     (("runtime", "nested", "clean"), "nested\nhost copy"),
     (("deadline", "upstream", "copy"), "deadline policy\nevenly spaced\ncopy back"),
     (("deadline", "nested", "copy"), "deadline policy\nnested\ncopy back"),

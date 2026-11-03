@@ -2,27 +2,30 @@
 # Prepare a fresh rented GPU instance to run these experiments.
 #
 # The upstream README is not sufficient on its own. Three things it does not
-# say, each of which cost setup time to discover:
+# say:
 #   1. oom-free-alpamayo needs the alpamayo_r1 package, which lives in a
 #      separate repository (NVlabs/alpamayo) that the README does not name.
 #   2. Plain pip fails on flash-attn, which imports torch during its own build.
 #      uv with --no-build-isolation-package is what works.
 #   3. accelerate is required but listed nowhere.
 #
+# The environment needs Python 3.12: alpamayo_r1 declares requires-python
+# ==3.12.*, so installing it fails on other versions.
+#
 # Installing alpamayo_r1 downgrades torch to its pinned 2.8.0. CUDA still works
 # after the downgrade; this is expected, not a fault.
 #
-# The dataset is gated and needs a token whose "read public gated repos"
-# permission is explicitly enabled. That permission is not granted by default,
-# including for fine-grained tokens, and access fails with 403 without it.
+# The dataset is gated: request access on its Hugging Face page, then use any
+# read token. A fine-grained token additionally needs read access to public
+# gated repositories. The model itself is not gated.
 #
 # Usage:  bash setup/setup_instance.sh
 #   WORKDIR   where the upstream clones live (default: parent of this repo)
 #   VENV      a virtualenv to activate, if not already active
 #   HF_TOKEN  overrides the stored Hugging Face token
 #   OOM_FREE_ALPAMAYO_COMMIT, ALPAMAYO_COMMIT
-#             upstream commits to check out; the defaults are the ones every
-#             result in data/ was measured with
+#             upstream commits to check out; the defaults are the commits
+#             recorded in data/compute_interaction_3090.json
 
 set -euo pipefail
 
@@ -34,14 +37,15 @@ fi
 
 if [ -z "${HF_TOKEN:-}" ]; then
     echo "No Hugging Face token found."
-    echo "The PhysicalAI-Autonomous-Vehicles dataset is gated. Create a token at"
-    echo "huggingface.co/settings/tokens with 'read public gated repos' enabled,"
-    echo "then either run:  HF_TOKEN=hf_... bash setup_instance.sh"
+    echo "The PhysicalAI-Autonomous-Vehicles dataset is gated. Request access on its"
+    echo "Hugging Face page, create a read token at huggingface.co/settings/tokens"
+    echo "(a fine-grained token needs read access to public gated repositories),"
+    echo "then either run:  HF_TOKEN=hf_... bash setup/setup_instance.sh"
     echo "or place it at:   \${HF_HOME:-\$HOME/.cache/huggingface}/token"
     exit 1
 fi
 
-# WORKDIR is where the upstream clones and model cache go. It defaults to the
+# WORKDIR is where the upstream clones go. It defaults to the
 # parent of this repository, so scheduler/paths.py finds the clones as siblings
 # without configuration. Override it for a machine laid out differently.
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -49,10 +53,8 @@ WORKDIR="${WORKDIR:-$(dirname "$REPO_ROOT")}"
 mkdir -p "$WORKDIR"
 
 echo "=== System packages ==="
-# DCGM is deliberately not installed. Its profiling module fails to load in
-# these containers, so the fine-grained occupancy counters it exists for are
-# unavailable anyway, and none of the experiments here use it. It is a 911MB
-# download that stalled setup for nine minutes on one host before being cut.
+# DCGM is not installed: none of the experiments here use it, and its
+# profiling counters are commonly unavailable inside shared cloud containers.
 if command -v apt-get >/dev/null 2>&1 && [ "$(id -u)" = "0" ]; then
     apt-get update -qq
     apt-get install -y -qq git wget python3-pip
@@ -95,7 +97,8 @@ echo "  oom-free-alpamayo $(git -C oom-free-alpamayo rev-parse --short HEAD), al
 
 echo "=== Python packages ==="
 # flash-attn imports torch during its own build, so it must not be built in
-# isolation. Plain pip fails here; uv with the exemption is what works.
+# isolation. uv exempts only flash-attn; without uv, pip disables isolation for
+# every package, which needs torch and hatchling already installed.
 cd "$WORKDIR/alpamayo"
 if [ "$PIP" = "uv pip" ]; then
     uv pip install -q -e . --no-build-isolation-package flash-attn
@@ -123,23 +126,24 @@ api.dataset_info("nvidia/PhysicalAI-Autonomous-Vehicles")
 print("  dataset reachable")
 PY
 
-echo "=== Model weights (about 21GB, one time) ==="
+echo "=== Model weights (about 22GB, one time) ==="
+# Into the default Hugging Face cache, which is where the experiments' model
+# loads look (set HF_HOME to move it).
 python - <<'PY'
-import os
 from huggingface_hub import snapshot_download
-snapshot_download("nvidia/Alpamayo-R1-10B", cache_dir=os.environ.get("MODEL_CACHE") or os.path.expanduser("~/hf_cache"))
+snapshot_download("nvidia/Alpamayo-R1-10B")
 print("  model downloaded")
 PY
 
 echo "=== Profiling for this machine ==="
 cd "$WORKDIR/oom-free-alpamayo"
-# Clock locking is denied inside these containers even as root, so timing runs
-# cannot pin clocks. --no-lock-clock is required, not optional.
+# Clock locking needs privileges a container usually lacks, so --no-lock-clock
+# is passed.
 python scripts/profile.py --model r1 --no-lock-clock --output r1_config.json
 
 echo
 echo "Ready. The residency profiles in scheduler/profiles.py were measured on an"
-echo "RTX 3090 and must be re-measured on different hardware before use:"
+echo "RTX 3090; on different hardware, measure them on the machine in use:"
 echo "    python experiments/characterize/calibrate.py    # latency per residency level"
 echo "    python experiments/characterize/vram_per_k.py   # footprint per residency level"
 echo "    python experiments/characterize/build_profiles.py"

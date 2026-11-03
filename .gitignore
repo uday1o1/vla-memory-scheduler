@@ -1,6 +1,4 @@
 __pycache__/
 *.pyc
 .DS_Store
-PROJECT_DETAILS.md
-MANUSCRIPT.md
 results/

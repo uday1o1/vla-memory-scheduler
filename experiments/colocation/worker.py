@@ -71,6 +71,7 @@ def main():
 
         free_after_load, total = torch.cuda.mem_get_info()
         record["load_ok"] = True
+        # Device-wide used memory: with two tenants it includes the other one.
         record["process_used_gb"] = (total - free_after_load) / (1024 ** 3)
 
         # warmup (not timed)

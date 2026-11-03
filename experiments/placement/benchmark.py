@@ -1,4 +1,4 @@
-"""Comprehensive empirical validation of the nested placement rule.
+"""Empirical validation of the nested placement rule.
 
 Two claims need separate treatment because they have different dependencies:
 
@@ -10,11 +10,12 @@ Two claims need separate treatment because they have different dependencies:
      latency must hold across scene content, so it is measured across all
      six clips at several residency levels.
 
-Part B must be run in both orders on hardware whose clocks are not stable.
-Where the GPU is power capped and clock locking is denied, the arm measured
-first for a given clip carries a penalty of roughly two and a half seconds
-that three warmup passes do not absorb, large enough to read as an eleven
-percent placement effect. Running once with --nested-first identifies the
+Part B must be run in both orders. On one RTX 3090 host, after a run of
+residency changes, the arm measured first for a given clip carried a penalty
+of 1.9 to 3.0 seconds in half the clip and level pairs, which three warmup
+passes did not absorb, large enough to make the first-measured arm 11.5 to
+14.6 percent slower than the other on those pairs (data/placement_bench_3090new_k14.json and
+data/placement_bench_3090new_swapped.json). Running once with --nested-first identifies the
 affected rows, since a genuine placement difference keeps its sign when the
 order is swapped and an artifact does not.
 """
@@ -58,10 +59,10 @@ CLIPS = [
 def build_paths(max_k: int) -> dict[int, list[int]]:
     """Adaptation paths of varying step size, scaled to what the card can hold.
 
-    Each path oscillates around a centre so total displacement stays
-    comparable while the step size varies. Centring on max_k - 3 keeps every
-    excursion inside the card's capacity; hardcoding counts sized for a 24GB
-    card runs out of memory on a 16GB one.
+    Each path starts at max_k - 3 and takes eight steps of the given size:
+    three up, four down, one up. Every level is clamped to [2, max_k], so no
+    excursion exceeds what the card holds. Total displacement grows with the
+    step size.
     """
     c = max_k - 3
     paths = {}
@@ -136,7 +137,7 @@ def main():
 
     # ---- A. transition cost versus adaptation granularity ----
     print(f"\n=== A. Transition cost by granularity ({args.transition_reps} reps) ===")
-    print(f"{'mean|dK|':<10}{'upstream s':<22}{'nested s':<22}{'speedup':<10}{'moves u/n'}")
+    print(f"{'step':<10}{'upstream s':<22}{'nested s':<22}{'speedup':<10}{'moves u/n'}")
     for gran, path in sorted(PATHS.items()):
         per_rule = {}
         rules = [("upstream", interleaved_placement), ("nested", nested_placement)]
@@ -154,17 +155,15 @@ def main():
                     pipe.remove()
                     # Each TriHookPipeline holds two device buffers sized for
                     # the largest streamed layer. Rebinding `pipe` does not
-                    # free the previous one promptly, so across dozens of
-                    # transitions the stale buffers accumulate into several GB
-                    # and exhaust a 16GB card. Dropping it explicitly before
-                    # the timer keeps memory bounded without charging the cost
-                    # to the measurement.
+                    # free the previous one promptly, so stale buffers can
+                    # accumulate across transitions. Dropping it explicitly
+                    # before the timer keeps memory bounded without charging
+                    # the cost to the measurement.
                     #
-                    # empty_cache() is deliberately NOT called here. Returning
-                    # the blocks to the allocator's pool is what a real
-                    # adaptive system would have; forcing a full release would
-                    # make every transition pay a fresh cudaMalloc and measure
-                    # a pessimistic case that does not occur in practice.
+                    # empty_cache() is deliberately NOT called here. Freed
+                    # blocks stay in the allocator's pool, as they would in an
+                    # adaptive system; forcing a full release would make every
+                    # transition pay a fresh cudaMalloc.
                     del pipe
                     gc.collect()
                     t0 = time.perf_counter()
@@ -173,11 +172,9 @@ def main():
                 pipe.remove()
                 times.append(total)
                 moves_total = mv
-                # Release the allocator's cached blocks between repetitions.
-                # Each transition leaves freed blocks cached, and across dozens
-                # of transitions that accumulates until a 16GB card runs out,
-                # even at residency levels that fit comfortably on their own.
-                # This sits outside the timed region deliberately: calling it
+                # Release the allocator's cached blocks between repetitions, so
+                # blocks cached by one repetition's transitions do not carry
+                # into the next. This sits outside the timed region deliberately: calling it
                 # inside switch() would add its cost to the transition times
                 # this benchmark exists to measure.
                 torch.cuda.empty_cache()
@@ -203,9 +200,8 @@ def main():
                 order.reverse()
             for name, rule in order:
                 pipe = switch(rule(k, n_vlm))
-                # Warm up until timings settle. One pass is enough on a fast
-                # link, but on a slow one the first call after a placement
-                # change carries a large one-time cost that would otherwise be
+                # Untimed warmup passes. The first call after a placement
+                # change can carry a one-time cost that would otherwise be
                 # averaged into the result and read as a placement effect.
                 for _ in range(args.latency_warmup):
                     pipe.start_iteration()
@@ -238,7 +234,7 @@ def main():
           f"mean {statistics.mean(deltas):+.4f}s ({statistics.mean(pcts):+.3f}%), "
           f"max |delta| {max(abs(d) for d in deltas):.4f}s")
     print(f"Transition speedup by granularity: " + ", ".join(
-        f"|dK|={g}: {v['upstream']['mean'] / v['nested']['mean']:.2f}x"
+        f"step={g}: {v['upstream']['mean'] / v['nested']['mean']:.2f}x"
         for g, v in sorted(results["transition"].items())))
     print(f"\nSaved -> {args.output}")
 

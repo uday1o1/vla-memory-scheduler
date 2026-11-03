@@ -15,8 +15,9 @@ reads:
 
 Three profiles are chosen from the measured levels: the fastest that was
 measured, the slowest, and the one nearest the middle by latency. The
-selection rule needs them spaced, and the deadline needs the middle one to sit
-between the other two, which the profiles module asserts.
+selection rule needs them spaced, and the deadline built from the middle one
+has to separate the profiles, which this script checks before writing the
+file.
 """
 from __future__ import annotations
 
@@ -39,7 +40,7 @@ def main() -> None:
     p.add_argument("--names", nargs=3, default=["fast", "mid", "compact"])
     p.add_argument("--k", type=int, nargs=3, default=None,
                    help="use exactly these residency levels rather than choosing, "
-                        "so the profile set matches an earlier machine's")
+                        "so the profile set matches another machine's")
     args = p.parse_args()
 
     for f in (args.calibration, args.vram):

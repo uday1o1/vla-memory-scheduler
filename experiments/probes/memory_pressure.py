@@ -1,13 +1,11 @@
-"""Decisive probes for the memory-pressure redesign.
+"""Probes that decide whether memory-pressure sensing is viable.
 
-Three questions that determine whether the redesign is viable at all:
+Two questions decide it:
   A. Does torch.cuda.mem_get_info() see ANOTHER process's allocation?
-  B. With the model already loaded at K=33, what happens when a second
-     process grabs VRAM - do we fail, slow down, or continue unaffected?
-  C. If a second process holds VRAM FIRST, can K=33 still load? Does a
+  B. If a second process holds VRAM FIRST, can K=33 still load? Does a
      lower K load successfully in the same conditions?
 
-C is the crux: it establishes whether a regime exists where the static
+B is the crux: it establishes whether a regime exists where the static
 policy fails and an adaptive one survives.
 """
 from __future__ import annotations
@@ -54,9 +52,9 @@ def probe_a():
     return delta > 4.0
 
 
-def probe_c():
+def probe_b():
     """Can the model load at K=33 when VRAM is already held by another process?"""
-    print("\n=== C. Can K=33 load under pre-existing memory pressure? ===")
+    print("\n=== B. Can K=33 load under pre-existing memory pressure? ===")
     from alpamayo_memopt import load_config
     from alpamayo_memopt.models import TriHookPipeline, get_adapter
     from alpamayo_memopt.profiler import interleaved_placement
@@ -127,6 +125,6 @@ if __name__ == "__main__":
     torch.cuda.set_device(0)
     cross_process_aware = probe_a()
     if cross_process_aware:
-        probe_c()
+        probe_b()
     else:
-        print("\nmem_get_info is NOT cross-process aware - redesign sensing mechanism is invalid.")
+        print("\nmem_get_info is NOT cross-process aware, so free-memory sensing cannot work.")

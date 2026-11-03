@@ -1,31 +1,41 @@
 #!/bin/bash
-# Re-run the measurements behind the committed results, in the order and with
-# the arguments that produced them.
+# Re-run the core and placement measurements behind the committed results with the
+# arguments that produced them. The spread stage reproduces
+# data/spread_latency_4090.json, which was measured on an RTX 4090.
 #
 # Usage:  bash setup/reproduce.sh [core|placement|all]     (default: core)
-#   core       characterization, demotion cost, and the trace experiment:
-#              the primary results. About 24 hours on an RTX 3090.
-#   placement  transition cost, latency parity, output equivalence and the
-#              end-to-end placement comparison. Several hours.
+#   core       characterization, demotion cost, the trace experiment and
+#              compute contention: the primary results. The committed data
+#              hold about 21 hours of timed calls (the trace experiment about
+#              18.5), plus setup and model loading.
+#   placement  transition cost, latency parity, output equivalence, the
+#              end-to-end placement comparison and spread against latency.
+#              Several hours.
 #   VLA_RESULTS  where results go (default: results/ in this repository, so the
 #                committed data/ is never overwritten)
+#   VENV         a virtualenv to activate, if none is active (as in setup)
 #
 # Each stage writes a .done marker, so running the script again after an
-# interruption resumes at the first unfinished stage, which starts over. A failing stage writes FAILED with
-# its name and stops. Output of every stage goes to $VLA_RESULTS/reproduce.log.
+# interruption resumes at the first unfinished stage, which starts over. A
+# failing stage writes FAILED with its name and stops. Output of every stage
+# goes to $VLA_RESULTS/reproduce.log.
 #
 # Requirements: a 24GB NVIDIA GPU for the trace experiment (it checks before
 # starting and refuses a card on which its design cannot separate the
-# policies), at least 64GB of host memory since keeping a host copy pins the
-# whole model, disk for the 21GB of model weights and the Python
-# environment, and a Hugging Face token as described in
-# setup_instance.sh.
+# policies), host memory for the model plus a pinned copy of its 36
+# language-model layers (12.94GB) when a host copy is kept, disk for the 22GB
+# of model weights and the Python environment, and a Hugging Face token as
+# described in setup_instance.sh.
 set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO"
 WHAT="${1:-core}"
 case "$WHAT" in core|placement|all) ;; *) echo "usage: $0 [core|placement|all]"; exit 2;; esac
-[ -z "${VIRTUAL_ENV:-}" ] && [ -f /venv/main/bin/activate ] && source /venv/main/bin/activate
+if [ -z "${VIRTUAL_ENV:-}" ] && [ -n "${VENV:-}" ] && [ -f "$VENV/bin/activate" ]; then
+  source "$VENV/bin/activate"
+elif [ -z "${VIRTUAL_ENV:-}" ] && [ -f /venv/main/bin/activate ]; then
+  source /venv/main/bin/activate
+fi
 export VLA_RESULTS="${VLA_RESULTS:-$REPO/results}"
 R="$VLA_RESULTS"; mkdir -p "$R"; LOG="$R/reproduce.log"
 

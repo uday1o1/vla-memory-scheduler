@@ -1,9 +1,11 @@
 """Co-location capacity experiment.
 
-Compares three configurations on one RTX 3090:
-  1. one tenant at K=33  (what the static offline policy picks: 17.24GB)
+Compares four configurations on one RTX 3090 (footprints measured by
+experiments/characterize/vram_per_k.py, data/vram_per_k_3090.json):
+  1. one tenant at K=33  (what the static offline policy picks: 16.68GB)
   2. one tenant at K=16  (reduced residency, solo - isolates the residency cost)
-  3. two tenants at K=16 (11.28GB each - what reduced residency enables)
+  3. two tenants at K=16 (10.78GB each - what reduced residency enables)
+  4. two tenants at K=33 (the static choice, tried directly)
 
 Config 3 is only reachable if residency is chosen with available VRAM in
 mind; the static K=33 choice forecloses it. Comparing 2 against 3 separates
@@ -18,6 +20,10 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from scheduler.paths import RESULTS  # noqa: E402
+
 WORKER = str(Path(__file__).resolve().parent / "worker.py")
 PY = sys.executable  # the interpreter running this script, not a fixed install
 CLIPS = [
@@ -29,7 +35,7 @@ CLIPS = [
 def run_config(name: str, ks: list[int], n_calls: int, outdir: Path) -> dict:
     """Launch one tenant per entry in `ks`, all starting their timed calls together."""
     print(f"\n=== {name}: {len(ks)} tenant(s) at K={ks} ===")
-    # Model load takes ~1-2 min; give every tenant time to reach the barrier.
+    # Give every tenant time to load the model and reach the barrier.
     start_at = time.time() + 240
     procs, outputs = [], []
     for idx, k in enumerate(ks):

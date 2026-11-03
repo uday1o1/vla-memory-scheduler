@@ -1,10 +1,10 @@
-"""Calibrate latency(K) for the deadline-aware residency policy.
+"""Measure latency per residency level K, from which the profiles and the
+deadline are built.
 
-The oom-free-alpamayo profiler only computes max resident count from VRAM
-capacity (budget / layer_size); it never measures per-layer timing. Our
-adaptive policy needs an empirical latency(K) relationship to invert for
-"what K meets this deadline", so we measure it directly: run N calls at
-each of several K values, same clip, no contention, and record mean latency.
+The oom-free-alpamayo profiler sets the resident count from VRAM capacity
+(budget / layer size) and times only the fully offloaded pass; it never
+measures latency at intermediate K. This runs N calls at each of several K
+values, same clip, no contention, and records the mean latency.
 """
 from __future__ import annotations
 

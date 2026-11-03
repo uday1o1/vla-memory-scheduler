@@ -1,16 +1,15 @@
 """Why is a residency level reached by transition slower than one started at?
 
-On one machine, inference at K=16 runs about six percent slower if that level
-was reached by changing residency than if the process started there, and the
-gap does not decay. The observation is solid and the cause is not known. Until
-it is, it is a curiosity rather than a result, because nothing follows from it
-about how to build the system.
-
-Three questions decide it, and each is a comparison against the same baseline:
+On one machine, inference at K=16 reached by a change from K=24 ran 12 to 14
+percent slower than in a process that started there in two of four cycles, and
+at the baseline in the other two; where present, the gap did not decay over 14
+calls (data/churn_recovery_3090.json). This probe asks three
+questions about its cause, each a comparison against the same baseline:
 inference at the target level in a process that never changed residency.
 
-  Direction. Shedding layers pins host memory and costs three to six times
-  what restoring them does. If only the shedding direction leaves the residue,
+  Direction. Shedding layers pins host memory and costs 5.7 to 6.7 times
+  what restoring the same number does (8, 9 and 17 layers, mean of the two
+  measurement orders, data/eviction_copy_nested*_3090.json). If only the shedding direction leaves the residue,
   the pinned-memory path is implicated rather than anything generic.
 
   The allocator. If emptying the caching allocator after the change restores
@@ -24,8 +23,9 @@ inference at the target level in a process that never changed residency.
   support rather than inference from timing alone.
 
 A mitigation that works matters as much as the mechanism: an adaptive policy
-that must pay six percent forever after each change is a different proposition
-from one that pays it until it calls a function.
+that may pay twelve percent after each change, for as long as the level is
+held, is a different proposition from one that pays it until it calls a
+function.
 """
 from __future__ import annotations
 

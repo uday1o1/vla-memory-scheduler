@@ -6,13 +6,14 @@ arm stays small. Whether the upgrade is worth its cost is the question, and the
 placement rule determines how many layers the upgrade has to move, so both
 rules are run.
 
-Four arms per clip:
+Three arms per clip:
   fixed    nested     never upgrades (placement is irrelevant, run as control)
   adaptive nested     upgrades, moving the minimum number of layers
   adaptive upstream   upgrades, moving however many the upstream rule requires
 
-Release timing is driven by a marker the worker writes when it begins timed
-calls, rather than by a fixed sleep, so it does not drift with model load time.
+Pressure is released RELEASE_AFTER_S seconds after a marker the worker writes
+when it begins timed calls, so the release does not drift with model load
+time.
 """
 from __future__ import annotations
 
@@ -43,7 +44,7 @@ CLIPS = [
     "8825b1fa-0abf-4a28-b444-25fef71cadcb",
 ]
 PRESSURE_GB = 10.0     # forces the compact profile at startup
-RELEASE_AFTER_S = 180  # about ten calls at the compact profile
+RELEASE_AFTER_S = 180  # about 11 to 14 calls at the compact profile
 
 
 def hold(gb: float):

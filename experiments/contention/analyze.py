@@ -1,14 +1,23 @@
 """Analysis of the compute-contention experiment (the negative boundary result).
 
 Tests whether residency adaptation changes deadline-miss rate under compute
-contention. The hypothesis under test is that it does NOT, because compute
-interference is proportional across residency levels - so residency has no
-lever against it.
+contention. The hypothesis under test is that it does not: contention adds a
+roughly constant time per call at every residency level (1.70, 2.23 and 2.12s
+at K=16, 24 and 33, difference of medians, data/compute_interaction_3090.json),
+so lowering K does not remove the added time and only adds streaming time.
+
+    python experiments/contention/analyze.py   # data/compute_contention_3090.json
+    python experiments/contention/analyze.py --input data/compute_boundary_results_3090.json
+
+The boundary run (boundary.py) records results in the switching experiment's
+format, so that file is handed to experiments/switching/analyze.py.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import runpy
+import sys
 from pathlib import Path
 
 from scipy.stats import wilcoxon
@@ -23,10 +32,15 @@ def miss_rate(latencies, deadline):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--input", type=Path,
-                   default=Path("data/compute_contention_3090.json"))
+                   default=Path(__file__).resolve().parents[2] / "data" / "compute_contention_3090.json")
     args = p.parse_args()
 
     data = json.loads(args.input.read_text())
+    if isinstance(data, list):  # boundary.py output, switching format
+        sys.argv = [sys.argv[0], "--input", str(args.input)]
+        runpy.run_path(str(Path(__file__).resolve().parents[1] / "switching" / "analyze.py"),
+                       run_name="__main__")
+        return
     print(f"Reps available: {len(data)}\n")
 
     rows = {s: {"baseline": [], "adaptive": []} for s in SCENARIOS}
@@ -70,10 +84,9 @@ def main():
         except Exception as e:
             print(f"{s:<14} n={len(b)}  test failed: {e}")
 
-    print("\nNote: with n=2 reps this is descriptive, not inferential. The locked")
-    print("design calls for n=6; these two reps were collected before the design")
-    print("flaw was found and are retained only as the compute-contention boundary")
-    print("evidence, where the arms are expected to be identical by construction.")
+    print("\nNote: with n=2 reps this is descriptive, not inferential. The repeated")
+    print("measurement of compute contention is data/compute_interaction_3090.json")
+    print("(experiments/contention/interaction.py).")
 
 
 if __name__ == "__main__":

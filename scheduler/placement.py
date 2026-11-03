@@ -3,16 +3,19 @@
 The upstream rule (`interleaved_placement`) spreads K resident layers evenly
 across the layer stack. That is correct for a one-shot offline choice, but it
 is not nested: the K-layer set is not a subset of the K+1-layer set, so
-changing K at runtime reshuffles layers that did not need to move. Measured
-across a representative adaptation path it costs about 3x more layer
-movements than the change in K requires, and movement is expensive
-(roughly 0.35s per layer shed, 0.064s per layer restored).
+changing K at runtime reshuffles layers that did not need to move. On the
+24/16 alternation in data/adaptive_cost_3090.json it moves 120 layers where
+72 suffice (both counts include the first load of 24), and a change of one
+level can move up to 33. Movement is expensive (roughly 0.30s per layer shed
+and 0.05s per layer restored on the primary RTX 3090 host,
+data/eviction_copy_nested_3090.json).
 
 A nested rule fixes a single priority order over layers and takes the top K.
 Every K-set is then a subset of every larger one, so a transition moves
 exactly |delta K| layers. The order is built by recursive bisection, so each
-prefix is still spread across the stack rather than clustered, preserving
-the property the interleaved rule was designed for.
+prefix stays spread across the stack rather than clustered: its largest gap
+equals the interleaved rule's at 24 of the 32 levels from K=2 to 33 and is
+never more than 4 layers wider.
 """
 from __future__ import annotations
 
@@ -108,8 +111,9 @@ def _selftest():
     print("  layer 0 always resident, final layer never resident, exact count: ok")
 
     print("\n=== The reproduced upstream rule against the original ===")
-    # Only a genuinely absent upstream package may skip this check. Any other
-    # failure is a bug here and must not masquerade as a missing dependency.
+    # Only a missing upstream package, or its torch dependency, may skip this
+    # check. Any other failure is a bug here and must not masquerade as a
+    # missing dependency.
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -118,7 +122,7 @@ def _selftest():
     try:
         from alpamayo_memopt.profiler import interleaved_placement
     except ModuleNotFoundError:
-        print("  original not installed here; the reproduction is used as is")
+        print("  original (alpamayo_memopt with torch) not importable here; the reproduction is used as is")
     else:
         mismatch = [k for k in range(0, total + 1)
                     if upstream_placement(k, total) != interleaved_placement(k, total)]
@@ -126,7 +130,7 @@ def _selftest():
         print("  identical at every K")
 
     print("\n=== Spread quality (max consecutive non-resident run; lower is better) ===")
-    # Swept across the whole range, not a sample. Spread parity holds at most
+    # Swept over every K from 2 to 33, not a sample. Spread parity holds at most
     # residency levels but not all, and a curated subset of K hides exactly
     # the levels where it does not.
     print(f"  {'K':<6}{'nested':<10}{'upstream':<10}{'moves nested':<15}{'moves upstream'}")

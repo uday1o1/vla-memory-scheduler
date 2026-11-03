@@ -1,23 +1,29 @@
 """Pre-profiled residency configurations and the profile-switching policy.
 
-This replaces the earlier continuous-K policy, which re-derived an arbitrary
-residency count on every inference call. Two independent reasons:
+Profiles, rather than an arbitrary residency count re-derived on every call,
+for two reasons:
 
-  1. Measured transition cost. Changing residency costs 0.3 to 4.7 seconds
-     against 7 to 17 seconds of inference, so a policy free to move to any K
-     on any call can spend a large fraction of its budget reconfiguring.
-     A small fixed profile set bounds both how often transitions happen and
-     how large each one is.
+  1. Measured transition cost. Changing residency costs 0.43 to 4.97 seconds
+     in the isolated demotion runs (0.27 to 0.71 with a host copy kept;
+     medians averaged over both orders, data/eviction_*_3090.json) and 0.43
+     to 7.51 seconds per change inside the trace experiment (0.28 to 0.94
+     with a host copy kept, data/trace_results_3090.json), against 6.4 to
+     17.7 seconds of inference per call in that experiment, so a policy free
+     to move to any K on any call can spend a large fraction of its budget
+     reconfiguring. A small fixed profile set bounds both how often
+     transitions happen and how large each one is.
 
-  2. The continuous policy could not be tested. Its deadline was anchored to
-     the fastest configuration that fits, so its only lever made latency
-     worse and the adaptive arm was identical to the static arm in every
-     scenario measured.
+  2. A deadline anchored to the fastest configuration leaves one lever,
+     lowering K, and that lever only makes latency worse, so it cannot
+     separate an adaptive policy from a static one. The deadline here is
+     anchored to the middle profile instead (see below).
 
 Profiles are spaced across the measured latency and footprint curves. The
-switching rule reads free GPU memory, which torch.cuda.mem_get_info reports
-across processes and which needs no elevated privilege, and picks the fastest
-profile that fits with margin.
+selection rule picks the fastest profile that fits a memory budget with
+margin. The launch-time experiments (experiments/switching,
+experiments/dynamic) give it free GPU memory, which torch.cuda.mem_get_info
+reports across processes and which needs no elevated privilege; the trace
+experiment gives it the memory the tenant leaves (scheduler/trace.py).
 """
 from __future__ import annotations
 
@@ -41,8 +47,9 @@ class Profile:
 def load_profiles(path: str | Path) -> tuple[Profile, ...]:
     """Read profiles measured on the machine in use.
 
-    The file is a list of objects with name, k, latency_s and footprint_gb,
-    as produced by experiments/characterize/build_profiles.py. Profiles are
+    The file holds a list of objects with name, k, latency_s and
+    footprint_gb, either bare or under "profiles" as
+    experiments/characterize/build_profiles.py writes it. Profiles are
     returned fastest first, which is the order the selection rule expects.
     """
     entries = json.loads(Path(path).read_text())
@@ -55,11 +62,13 @@ def load_profiles(path: str | Path) -> tuple[Profile, ...]:
     return tuple(sorted(built, key=lambda p: p.latency_s))
 
 
-# Measured on the RTX 3090 by experiments/characterize/calibrate.py and
-# experiments/characterize/vram_per_k.py. These are the defaults, and they are
-# specific to that card: latency and footprint both differ on other hardware,
-# and the deadline is derived from them. Point VLA_PROFILES at a file from
-# build_profiles.py to use profiles measured on the machine in use.
+# Built-in defaults: the RTX 3090 profiles the switching and dynamic
+# experiments used (recorded in data/switch_results_3090.json and
+# data/dynamic_results_3090.json, deadline 14.1565s). The committed RTX 3090
+# profiles from the characterization runs are data/profiles_3090.json, which
+# the trace experiment uses. Latency and footprint both differ on other
+# hardware, and the deadline is derived from them. Point VLA_PROFILES at a
+# file from build_profiles.py to use profiles measured on the machine in use.
 DEFAULT_PROFILES: tuple[Profile, ...] = (
     Profile("fast", 33, 7.02, 17.24),
     Profile("mid", 24, 12.31, 14.14),

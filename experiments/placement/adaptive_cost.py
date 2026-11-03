@@ -1,11 +1,14 @@
 """What does running adaptively actually cost, with and without both fixes?
 
-Two separate results bear on the cost of changing residency, and neither has
-been measured against the other. Making the residency family nested cuts the
-layers a change must move, by up to 21.84x at single-level adjustments.
-Sharing the prefetch stream and events across reconstructions removes an
-intermittent thirteen percent penalty that reconstruction otherwise leaves
-behind. One acts on the transition, the other on everything after it.
+Two separate results bear on the cost of changing residency, and this script
+measures them together. Making the residency family nested cuts the time a
+change takes, by about 22x per single-level change on an RTX 4090 (21.84x and
+22.82x in the two measurement orders, data/placement_bench_4090_k14*.json).
+Sharing the prefetch stream across reconstructions removed an intermittent 11
+to 13 percent penalty in repeated rebuilds at one level
+(data/iso_stream_3090.json), though not in trials that also switch residency
+(data/stream_reuse_value_3090.json). One acts on the transition, the other on
+everything after it.
 
 An adaptive policy pays both, so the question is what they are worth together
 on a workload that actually switches. The dynamic experiment measured one
@@ -16,7 +19,8 @@ memory signal produces.
 
 Four arms cross the two fixes. Each alternates between two residency levels
 for a fixed number of phases, rebuilding the pipeline on every change as the
-upstream design requires, and every call and every transition is timed. The
+upstream design requires. Every transition, including the first load, is
+timed, and so is every call after one untimed settling call per phase. The
 comparison is total wall time to complete identical work, which is what a
 deployment pays.
 
@@ -176,8 +180,8 @@ def main() -> None:
     # A discarded arm first. Whichever arm runs first pays one-time costs the
     # others do not: layers reach the device from a cold start and host memory
     # is pinned for the first time. Measured first, that inflates its
-    # transition total by roughly three times and reads as a property of
-    # whatever that arm was testing.
+    # transition total and reads as a property of whatever that arm was
+    # testing.
     print("Discarded warm-up arm, so no measured arm is the first to run...")
     arm(nested_placement, False)
     print("  warm-up done\n")
@@ -204,8 +208,9 @@ def main() -> None:
           f"{100 * (worst[1]['total_s'] - best[1]['total_s']) / best[1]['total_s']:.1f}% apart")
     print("\n  The two fixes act on different parts of the bill. Nested placement")
     print("  reduces the transition column by moving fewer layers; sharing the")
-    print("  stream reduces the inference column by not leaving a slower pipeline")
-    print("  behind. Whether either matters depends on how often residency moves.")
+    print("  stream targets the inference column, but in trials that switch")
+    print("  residency it did not remove the slow pipeline (stream_reuse_value).")
+    print("  Whether either matters depends on how often residency moves.")
     print(f"\nSaved -> {args.output}")
 
 

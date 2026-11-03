@@ -9,9 +9,10 @@ static    always loads the upstream offline choice (K=33), which was profiled
 switching choose among pre-profiled
           configurations using measured free memory
 
-The model is loaded once and all repetitions run inside this process. Each
-repetition uses a different driving clip, so input varies while hardware and
-load-time conditions are held constant. Reloading per repetition would add
+The model is loaded once and all repetitions run inside this process.
+Repetitions cycle through the driving clips (eight repetitions over six clips
+here), so input varies while hardware and load-time conditions are held
+constant. Reloading per repetition would add
 load-to-load variance without adding signal.
 """
 from __future__ import annotations

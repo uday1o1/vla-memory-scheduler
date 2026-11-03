@@ -8,8 +8,10 @@
 #
 # Running the measurements themselves additionally needs a CUDA GPU and the
 # upstream Alpamayo packages, which setup/setup_instance.sh installs. Those
-# are editable installs from git and pin torch to 2.8.0 themselves, so they
-# are deliberately not pinned here.
+# are editable installs of git clones, and alpamayo_r1 pins torch to 2.8.0
+# itself, so torch is deliberately not pinned here.
 
-scipy>=1.11
+# scipy 1.15 or later: older versions switch to a normal approximation when
+# paired differences have ties or zeros, which changes several p-values.
+scipy>=1.15
 matplotlib>=3.7

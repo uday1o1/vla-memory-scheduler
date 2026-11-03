@@ -1,24 +1,21 @@
-"""Calibrated GPU contention generator (Kutukcu et al. dummy-workload style).
+"""Calibrated GPU contention generator: a synthetic GEMM workload whose intensity is set directly.
 
 Contention intensity is defined DIRECTLY as duty cycle (busy_ms / (busy_ms +
 idle_ms)) of a saturating GEMM kernel, not measured via nvidia-smi or DCGM.
 
 Why: nvidia-smi's utilization.gpu is a coarse "any kernel active during the
-sample window" signal - it reports 100% at every duty cycle from 20% to 100%,
-confirmed empirically (see novelty-feasibility-audit.md). DCGM's Profiling module
-(the actual fine-grained SM-occupancy counters) fails to load in this
-container - a common cloud-GPU restriction on hardware performance-counter
-access for multi-tenant security. Neither path can measure fractional
-utilization here.
+sample window" signal, so it cannot resolve fractional duty cycles.
+Fine-grained SM-occupancy counters (DCGM profiling) are commonly unavailable
+on shared cloud GPUs, a restriction on hardware performance-counter access
+for multi-tenant security. Neither path measures fractional utilization.
 
 Since a saturating GEMM kernel occupies ~100% of SM resources while running,
-a 70% duty cycle directly constructs ~70% GPU occupancy without needing to
-measure it - this is the locked "70% GPU_UTIL steady contention" target,
-operationalized as duty cycle instead of a queried metric.
+a 70% duty cycle constructs about 70% GPU occupancy without needing to
+measure it: the steady-contention target is set as a duty cycle instead of a
+queried metric.
 
-Bursty mode: the same steady generator gated on/off by a Poisson process
-(lambda=0.2 inter-arrivals, mean 5s) with 500ms burst duration - matches the
-locked experimental design.
+Bursty mode: the same generator at full duty, switched on by Poisson arrivals
+(rate 0.2/s, mean inter-arrival 5s), each burst lasting 500ms.
 """
 from __future__ import annotations
 
@@ -71,10 +68,10 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--mode", choices=["steady", "bursty"], default="steady")
     p.add_argument("--duty-cycle", type=float, default=0.70,
-                   help="Steady mode: fraction of time busy (default 0.70, our locked target).")
+                   help="Steady mode: fraction of time busy (default 0.70).")
     p.add_argument("--duration", type=float, default=60.0, help="seconds")
     p.add_argument("--burst-duration", type=float, default=0.5,
-                   help="Bursty mode: seconds per burst (default 0.5, locked).")
+                   help="Bursty mode: seconds per burst (default 0.5).")
     p.add_argument("--lambda-rate", type=float, default=0.2,
                    help="Bursty mode: Poisson rate, mean inter-arrival = 1/lambda (default 0.2 -> 5s mean).")
     p.add_argument("--device", type=int, default=0)
